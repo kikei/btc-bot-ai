@@ -155,5 +155,6 @@ def get_slack_handler():
 def mkdir(logfile):
   from pathlib import Path
   dirname = os.path.dirname(logfile)
-  path = Path(dirname)
-  path.mkdir(parents=True, exist_ok=True)
+  if not os.path.exists(dirname):
+    path = Path(dirname)
+    path.mkdir(parents=True)
