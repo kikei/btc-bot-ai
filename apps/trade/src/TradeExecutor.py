@@ -6,8 +6,9 @@ from decimal import Decimal
 from classes import Trade, Confidence
 
 class TradeExecutor(object):
-  def __init__(self, models, trader=None, logger=None):
+  def __init__(self, models, accountId, trader=None, logger=None):
     self.models = models
+    self.accountId = accountId
     if trader is None:
       trader = Trader(logger=logger)
     self.trader = trader
@@ -35,7 +36,7 @@ class TradeExecutor(object):
                          .format(e=e)))
       return None
     trade = Trade(datetime.datetime.now(), position)
-    trade = models.Trades.save(trade)
+    trade = models.Trades.save(trade, accountId=self.accountId)
     return trade
 
   def handleOpen(self, confidence, lot, traderFun):
@@ -56,7 +57,7 @@ class TradeExecutor(object):
     # Update DB
     models = self.models
     confidence.updateStatus(Confidence.StatusUsed)
-    models.Confidences.save(confidence)
+    models.Confidences.save(confidence, accountId=self.accountId)
     self.logger.warning('Successfully opened, trade={}'.format(trade))
     return True
 
@@ -72,3 +73,13 @@ class TradeExecutor(object):
     """
     return self.handleOpen(confidence, lot, self.trader.openShortPosition)
     
+  def handleIgnoreConfidence(self, confidence):
+    """
+    (self: TradeExecutor, confidence: Confidence) -> None
+    """
+    self.logger.info('Updating to ignored, conf={c}'.format(c=confidence))
+    models = self.models
+    confidence.updateStatus(Confidence.StatusIgnored)
+    models.Confidences.save(confidence, accountId=self.accountId)
+    self.logger.info('Successfully updated, conf={c}'.format(c=confidence))
+

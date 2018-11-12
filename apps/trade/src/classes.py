@@ -55,6 +55,7 @@ class OnePosition(object):
 class Confidence(object):
   StatusNew = 'new'
   StatusUsed = 'used'
+  StatusIgnored = 'ignored'
   
   def __init__(self, date, longConf, shortConf, status):
     self.date = date
@@ -217,4 +218,5 @@ class PlayerActions:
   """
   OpenLong = 'OpenLong'
   OpenShort = 'OpenShort'
+  IgnoreConfidence = 'IgnoreConfidence'
   Exit = 'Exit'

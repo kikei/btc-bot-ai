@@ -1,3 +1,4 @@
+import pymongo
 from classes import OnePosition, Confidence, Trade
 
 class Models(object):
@@ -46,49 +47,44 @@ class Values(object):
     self.setup()
   
   def setup(self):
-    self.collection.create_index('k')
+    self.collection.create_index([('account_id', pymongo.TEXT),
+                                  ('k', pymongo.TEXT)])
   
-  def all(self):
+  def all(self, accountId):
     """
-    (self: Values) -> {str: any}
-    """
-    kvs = {k: None for k in Values.AllKeys}
-    objs = self.collection.find()
-    for kv in objs:
-      kvs[kv['k']] = kv['v']
-    return kvs
-
-  def all2(self):
-    """
-    (self: Values) -> {str: (value: any, type: str)}
+    (self: Values, accountId: str) -> {str: (value: any, type: str)}
     """
     kvs = {k: (None, Values.AllTypes[k]) for k in Values.AllKeys}
-    objs = self.collection.find()
+    conditions = {'account_id': accountId}
+    objs = self.collection.find(conditions)
     for kv in objs:
       kvs[kv['k']] = (kv['v'], Values.AllTypes[kv['k']])
     return kvs
 
-  def get(self, key):
+  def get(self, key, accountId):
     """
-    (self: Values, key: str) -> any
+    (self: Values, key: str, accountId: str) -> any
     """
     if key not in Values.AllKeys:
       raise KeyError(key)
-    kv = self.collection.find_one({'k': key})
+    conditions = {
+      '$and': [{'account_id': accountId}, {'k': key}]
+    }
+    kv = self.collection.find_one(conditions)
     if kv is None:
       return None
     else:
       return kv['v']
   
-  def set(self, key, value):
+  def set(self, key, value, accountId):
     """
-    (self: Values, key: str, value: any) -> any
+    (self: Values, key: str, value: any, accountId: str) -> any
     """
     if key not in Values.AllKeys:
       raise KeyError(key)
-    kv = {'k': key, 'v': value}
-    condition = {'k': key}
-    result = self.collection.replace_one(condition, kv, upsert=True)
+    kv = {'account_id': accountId, 'k': key, 'v': value}
+    conditions = {'$and': [{'account_id': accountId}, {'k': key}]}
+    result = self.collection.replace_one(conditions, kv, upsert=True)
     if result.upserted_id is None and result.matched_count == 0:
       return None
     else:
@@ -116,49 +112,57 @@ class Confidences(object):
     self.setup()
 
   def setup(self):
-    self.collection.create_index('timestamp')
+    self.collection.create_index([('account_id', pymongo.TEXT),
+                                  ('timestamp', pymongo.DESCENDING)])
 
-  def oneNew(self):
+  def oneNew(self, accountId):
     """
-    (self: Confidences) -> Confidence
+    (self: Confidences, accountId: str) -> Confidence
     """
-    condition = {'status': Confidence.StatusNew}
-    cur = self.collection.find(condition).sort('timestamp', -1).limit(1)
+    conditions = {'$and': [
+      {'account_id': accountId}, {'status': Confidence.StatusNew}
+    ]}
+    cur = self.collection.find(conditions).sort('timestamp', -1).limit(1)
     confidence = next(cur, None)
     if confidence is not None:
       confidence = Confidence.fromDict(confidence)
     return confidence
 
-  def all(self, status=None):
+  def all(self, accountId, status=None):
     """
-    (self: Confidences) -> (Confidences)
+    (self: Confidences, accountId: str) -> (Confidences)
     """
+    conditions = [{'account_id': accountId}]
     if status is not None:
-      condition = {'status': status}
-      cur = self.collection.find(condition)
-    else:
-      cur = self.collection.find()
-    cur = cur.sort('timestamp', -1)
+      conditions.append({'status': status})
+    conditions = {'$and': conditions}
+    cur = self.collection.find(conditions).sort('timestamp', -1)
     return (Confidence.fromDict(i) for i in cur)
   
-  def save(self, confidence):
+  def save(self, confidence, accountId):
     """
-    (self: Confidences, confidence: Confidence) -> Confidence
+    (self: Confidences, confidence: Confidence, accountId: str) -> Confidence
     """
     obj = confidence.toDict()
-    condition = {'timestamp': obj['timestamp']}
-    result = self.collection.replace_one(condition, obj, upsert=True)
+    obj['account_id'] = accountId
+    conditions = {'$and': [
+      {'account_id': accountId}, {'timestamp': obj['timestamp']}
+    ]}
+    result = self.collection.replace_one(conditions, obj, upsert=True)
     if result.upserted_id is None:
       return None
     else:
       return confidence
   
-  def delete(self, confidence):
+  def delete(self, confidence, accountId):
     """
-    (self: Confidences, confidence: Confidence) -> Confidence
+    (self: Confidences, confidence: Confidence, accountId: str) -> Confidence
     """
     obj = confidence.toDict()
-    result = self.collection.delete_one({'timestamp': obj['timestamp']})
+    conditions = {'$and': [
+      {'account_id': accountId}, {'timestamp': obj['timestamp']}
+    ]}
+    result = self.collection.delete_one(conditions)
     if result.deleted_count == 0:
       return None
     else:
@@ -170,22 +174,28 @@ class Trades(object):
     self.setup()
   
   def setup(self):
-    self.collection.create_index('timestamp')
+    self.collection.create_index([('account_id', pymongo.TEXT),
+                                  ('timestamp', pymongo.DESCENDING)])
   
-  def all(self):
+  def all(self, accountId):
     """
-    (self: Trades) -> [Trade]
+    (self: Trades, accountId: str) -> [Trade]
     """
-    cur = self.collection.find().sort('timestamp', -1)
+    conditions = {'account_id': accountId}
+    cur = self.collection.find(conditions).sort('timestamp', -1)
     trades = [Trade.fromDict(c) for c in cur]
     return trades
 
-  def save(self, trade):
+  def save(self, trade, accountId):
     """
-    (self: Trades, trade: Trade) -> Trade
+    (self: Trades, trade: Trade, accountId: str) -> Trade
     """
     obj = trade.toDict()
-    condition = {'timestamp': obj['timestamp']}
+    obj['account_id'] = accountId
+    condition = {'$and': [
+      {'account_id': accountId},
+      {'timestamp': obj['timestamp']}
+    ]}
     result = self.collection.replace_one(condition, obj, upsert=True)
     if result.upserted_id is None:
       return None

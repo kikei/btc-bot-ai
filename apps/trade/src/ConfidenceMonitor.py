@@ -10,8 +10,9 @@ class PassListener(object):
     return None
 
 class ConfidenceMonitor(object):
-  def __init__(self, models, loop=True, monitorInterval=3, logger=None):
+  def __init__(self, models, accountId, loop=True, monitorInterval=3, logger=None):
     self.models = models
+    self.accountId = accountId
     self.logger = logger
     self.listener = PassListener()
     self.monitorInterval = monitorInterval
@@ -22,11 +23,11 @@ class ConfidenceMonitor(object):
     return self
 
   def getEnabled(self):
-    return self.models.Values.get(Values.Enabled)
+    return self.models.Values.get(Values.Enabled, accountId=self.accountId)
 
   def getNewConfidence(self):
     Confidences = self.models.Confidences
-    return Confidences.oneNew()
+    return Confidences.oneNew(accountId=self.accountId)
 
   def start(self):
     models = self.models
