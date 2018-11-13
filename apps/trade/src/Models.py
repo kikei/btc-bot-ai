@@ -128,15 +128,19 @@ class Confidences(object):
       confidence = Confidence.fromDict(confidence)
     return confidence
 
-  def all(self, accountId, status=None):
+  def all(self, accountId, status=None, before=None, count=None):
     """
     (self: Confidences, accountId: str) -> (Confidences)
     """
     conditions = [{'account_id': accountId}]
     if status is not None:
       conditions.append({'status': status})
+    if before is not None:
+      conditions.append({'timestamp': {'$lt': before}})
     conditions = {'$and': conditions}
     cur = self.collection.find(conditions).sort('timestamp', -1)
+    if count is not None:
+      cur = cur.limit(count)
     return (Confidence.fromDict(i) for i in cur)
   
   def save(self, confidence, accountId):
@@ -176,13 +180,18 @@ class Trades(object):
   def setup(self):
     self.collection.create_index([('account_id', pymongo.TEXT),
                                   ('timestamp', pymongo.DESCENDING)])
-  
-  def all(self, accountId):
+
+  def all(self, accountId, before=None, count=None):
     """
     (self: Trades, accountId: str) -> [Trade]
     """
-    conditions = {'account_id': accountId}
+    conditions = [{'account_id': accountId}]
+    if before is not None:
+      conditions.append({'timestamp': {'$lt': before}})
+    conditions = {'$and': conditions}
     cur = self.collection.find(conditions).sort('timestamp', -1)
+    if count is not None:
+      cur = cur.limit(count)
     trades = [Trade.fromDict(c) for c in cur]
     return trades
 
