@@ -25,13 +25,15 @@ class Values(object):
   AdjusterSpeed = 'adjuster.speed'
   AdjusterLastDirection = 'adjuster.direction'
   AdjusterThresConf = 'adjuster.confidence.thres'
+  AdjusterLotMin = 'adjuster.lot.min'
   AllKeys = [
     Enabled,
     AdjusterStep,
     AdjusterStop,
     AdjusterSpeed,
     AdjusterLastDirection,
-    AdjusterThresConf
+    AdjusterThresConf,
+    AdjusterLotMin
   ]
   AllTypes = {
     Enabled: 'boolean',
@@ -39,7 +41,8 @@ class Values(object):
     AdjusterStop: 'float',
     AdjusterSpeed: 'float',
     AdjusterLastDirection: 'int',
-    AdjusterThresConf: 'float'
+    AdjusterThresConf: 'float',
+    AdjusterLotMin: 'float'
   }
   
   def __init__(self, db):

@@ -47,6 +47,13 @@ class BudgetManager(object):
     if lastDirection is None:
       lastDirection = 0.0
     self.lastDirection = lastDirection
+    
+    minLot = models.values.get(Values.AdjusterLotMin,
+                               accountId=self.accountId)
+    if minLot is None:
+      minLot = 0.01
+    self.minLot = minLot
+
 
   def save(self):
     self.models.Values.set(Values.AdjusterSpeed, self.speed,
@@ -64,7 +71,8 @@ class BudgetManager(object):
     self.speed = speed
     self.save()
     if abs(speed) < self.stop:
-      return self.f(abs(speed)) * direction
+      lot = self.f(abs(speed)) * direction
+      return min(lot, self.minLot)
     else:
       return 0.0
 
