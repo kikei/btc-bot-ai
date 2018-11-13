@@ -48,7 +48,7 @@ class BudgetManager(object):
       lastDirection = 0.0
     self.lastDirection = lastDirection
     
-    minLot = models.values.get(Values.AdjusterLotMin,
+    minLot = models.Values.get(Values.AdjusterLotMin,
                                accountId=self.accountId)
     if minLot is None:
       minLot = 0.01
