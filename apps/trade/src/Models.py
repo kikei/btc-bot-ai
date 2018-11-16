@@ -1,12 +1,18 @@
+import datetime
 import pymongo
-from classes import OnePosition, Confidence, Trade
+from classes import Tick, OneTick, OnePosition, Confidence, Trade, datetimeToStr
 
 class Models(object):
     def __init__(self, dbs):
       btctai_db = dbs.btctai_db
+      tick_db = dbs.tick_db
       self.Values = Values(btctai_db)
       self.Confidences = Confidences(btctai_db)
       self.Trades = Trades(btctai_db)
+      self.Ticks = Ticks(tick_db)
+
+    def Ticks(self):
+      return self.Ticks
 
     def Values(self):
       return self.Values
@@ -16,6 +22,79 @@ class Models(object):
 
     def Trades(self):
       return self.Trades
+
+
+class Ticks(object):
+  def __init__(self, db):
+    self.db = db
+    self.collections = {
+      Tick.BitFlyer: self.db.tick_bitflyer,
+      Tick.Quoine: self.db.tick_quoine
+    }
+
+  def setup(self):
+    for k, collection in self.collections:
+      collection.create_index([('datetime', pymongo.DESCENDING)])
+
+  def one(self, exchangers=None):
+    """
+    (self: Ticks, exchangers: [str]?) -> Tick
+    """
+    if exchangers is None:
+      exchangers = Tick.exchangers()
+    collections = [self.collections[e] for e in exchangers]
+    curs = [c.find().sort('datetime', -1).limit(1) for c in collections]
+    result = {}
+    for e, cur in zip(exchangers, curs):
+      t = next(cur, None)
+      if t is None:
+        result[e] = None
+      else:
+        result[e] = OneTick.from_dict(t)
+    return result
+
+  def all(self, exchangers=None, start=None, end=None, limit=10):
+    """
+    (self: Ticks, exchangers: [str]?, start: float?, end: float?, limit: int?)
+    -> {(exchanger: str): [Tick]}
+    """
+    if exchangers is None:
+      exchangers = Tick.exchangers()
+    collections = [self.collections[e] for e in exchangers]
+    conditions = []
+    if start is not None:
+      dateStart = datetime.datetime.fromtimestamp(start)
+      dateStart = datetimeToStr(dateStart)
+      conditions.append({'datetime': {'$gt': dateStart}})
+    if end is not None:
+      dateEnd = datetime.datetime.fromtimestamp(end)
+      dateEnd = datetimeToStr(dateEnd)
+      conditions.append({'datetime': {'$lt': dateEnd}})
+    if len(conditions) > 0:
+      curs = [c.find({'$and': conditions}) for c in collections]
+    else:
+      curs = [c.find() for c in collections]
+    curs = [c.sort('datetime', -1).limit(limit) for c in curs]
+    result = {}
+    for e, cur in zip(exchangers, curs):
+      result[e] = [OneTick.from_dict(t) for t in cur]
+    return result
+
+  def save(self, tick, exchangers=None):
+    """
+    (self: Ticks, tick: Tick, exchangers: [str]?) -> Tick
+    """
+    if exchangers is None:
+      exchangers = tick.exchangers()
+    results = {k: None for k in exchangers}
+    for e in exchangers:
+      if tick.exchanger(e) is not None:
+        t = tick.exchanger(e)
+        result = self.collections[e].replace_one({'datetime': t.date},
+                                                 t.to_dict(), upsert=True)
+        if result.matched_count != 0:
+          results[e] = t
+    return results
 
 
 class Values(object):
