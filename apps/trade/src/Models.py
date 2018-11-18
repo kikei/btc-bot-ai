@@ -53,13 +53,14 @@ class Ticks(object):
         result[e] = OneTick.from_dict(t)
     return result
 
-  def all(self, exchangers=None, start=None, end=None, limit=10):
+  def all(self, exchangers=None, start=None, end=None, limit=10, order=-1):
     """
     (self: Ticks, exchangers: [str]?, start: float?, end: float?, limit: int?)
     -> {(exchanger: str): [Tick]}
     """
     if exchangers is None:
       exchangers = Tick.exchangers()
+    order = 1 if order > 0 else -1
     collections = [self.collections[e] for e in exchangers]
     conditions = []
     if start is not None:
@@ -74,7 +75,7 @@ class Ticks(object):
       curs = [c.find({'$and': conditions}) for c in collections]
     else:
       curs = [c.find() for c in collections]
-    curs = [c.sort('datetime', -1).limit(limit) for c in curs]
+    curs = [c.sort('datetime', order).limit(limit) for c in curs]
     result = {}
     for e, cur in zip(exchangers, curs):
       result[e] = [OneTick.from_dict(t) for t in cur]
