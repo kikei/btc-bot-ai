@@ -71,8 +71,8 @@ class BudgetManager(object):
     self.speed = speed
     self.save()
     if abs(speed) < self.stop:
-      lot = self.f(abs(speed)) * direction
-      return max(lot, self.minLot)
+      lot = self.f(abs(speed))
+      return max(lot, self.minLot) * direction
     else:
       return 0.0
 
