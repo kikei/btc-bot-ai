@@ -65,6 +65,10 @@ class Position(object):
   StatusClosing = 'closing'
 
   def __init__(self, date, status, positions):
+    """
+    (self: Position, date: datetime, status: str, positions: [OnePosition])
+    -> Position
+    """
     self.date = date
     self.status = status
     self.positions = positions
@@ -87,9 +91,9 @@ class Position(object):
     return obj
   
   def __str__(self):
-    positions = ', '.join(list(str, self.positions))
+    positions = ', '.join(str(p) for p in self.positions)
     text = ('Position(date={date}, status={status}, positions=[{positions}]'
-            .format(datetimeToStr(self.date), self.status,
+            .format(date=datetimeToStr(self.date), status=self.status,
                     positions=positions))
     return text
 

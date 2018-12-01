@@ -21,6 +21,7 @@ def modelsDummy():
     def __init__(self):
       self.Confidences = ConfidencesDummy()
       self.Trades = TradesDummy()
+      self.Positions = PositionsDummy()
   
   class ConfidencesDummy(object):
     def __init__(self):
@@ -37,6 +38,14 @@ def modelsDummy():
     def save(self, trade):
       self.collection[trade.date] = trade
       return trade
+  
+  class PositionsDummy(object):
+    def __init__(self):
+      self.collection = {}
+
+    def save(self, position):
+      self.collection[position.date] = position
+      return position
   
   return Models()
 
@@ -58,14 +67,19 @@ def test_openPosition(modelsDummy):
   executor = TradeExecutor(models)
   exchanger = 'test'
   lot = 1.0
-  position = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
+  one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
   def traderFun(lot_):
     assert lot_ == lot
-    return position
-  trade = executor.openPosition(lot, traderFun)
+    return one
+  trade, position = executor.openPosition(lot, traderFun)
   assert isinstance(trade, Trade)
-  assert str(trade.position) == str(position)
+  assert str(trade.position) == str(one)
   assert models.Trades.collection[trade.date] == trade
+  assert isinstance(position, Position)
+  assert isinstance(position.date, datetime.datetime)
+  assert position.status == Position.StatusOpen
+  assert len(position.positions) == 1
+  assert models.Positions.collection[position.date] == position
 
 def test_handleOpen_ok(modelsDummy):
   models = modelsDummy

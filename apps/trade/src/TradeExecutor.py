@@ -3,7 +3,7 @@ import logging
 
 from Trader import Trader
 from decimal import Decimal
-from classes import Trade, Confidence
+from classes import Trade, Confidence, Position
 
 class TradeExecutor(object):
   def __init__(self, models, trader=None, logger=None):
@@ -21,7 +21,7 @@ class TradeExecutor(object):
   
   def openPosition(self, lot, traderFun):
     """
-    (self: TradeExecutor, lot: float) -> Trade
+    (self: TradeExecutor, lot: float) -> Trade, Position
     """
     models = self.models
     try:
@@ -29,14 +29,17 @@ class TradeExecutor(object):
       self.logger.debug('Result of opening position is, position={position}.'
                         .format(position=position))
       if position is None:
-        return None
+        return None, None
     except Exception as e:
       self.logger.error(('Unexpected error occured in opening position, e={e}'
                          .format(e=e)))
-      return None
-    trade = Trade(datetime.datetime.now(), position)
-    trade = models.Trades.save(trade)
-    return trade
+      return None, None
+    now = datetime.datetime.now()
+    trade_ = Trade(now, position)
+    trade = models.Trades.save(trade_)
+    position_ = Position(now, Position.StatusOpen, [position])
+    position = models.Positions.save(position_)
+    return trade, position
 
   def handleOpen(self, confidence, lot, traderFun):
     """
@@ -49,8 +52,8 @@ class TradeExecutor(object):
       self.logger.warning('Skipped opening position as too little lot.')
       return False
     self.logger.warning('Start opening position, lot={lot}.'.format(lot=lot))
-    trade = self.openPosition(lot, traderFun)
-    if trade is None:
+    trade, position = self.openPosition(lot, traderFun)
+    if trade is None or position is None:
       self.logger.error('Failed to open position, lot={lot}.'.format(lot=lot))
       return False
     # Update DB
