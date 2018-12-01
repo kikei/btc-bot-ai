@@ -6,6 +6,7 @@ class Models(object):
       self.Values = Values(btctai_db)
       self.Confidences = Confidences(btctai_db)
       self.Trades = Trades(btctai_db)
+      self.Positions = Position(btctai_db)
 
     def Values(self):
       return self.Values
@@ -15,6 +16,9 @@ class Models(object):
 
     def Trades(self):
       return self.Trades
+
+    def Positions(self):
+      return self.Positions
 
 
 class Values(object):
@@ -192,3 +196,41 @@ class Trades(object):
     else:
       return trade
 
+class Positions(object):
+  def __init__(self, db):
+    self.collection = self.db.positions
+    self.setup()
+  
+  def setup(self):
+    self.collection.create_index('timestamp')
+  
+  def all(self):
+    """
+    (self: Positions) -> [Position]
+    """
+    positions = self.collection.find().sort('timestamp', -1)
+    positions = [Position.fromDict(p) for p in positions]
+    return positions
+  
+  def save(self, position):
+    """
+    (self: Positions, position: Position) -> Position
+    """
+    obj = position.toDict()
+    condition = {'timestamp': obj['timestamp']}
+    result = self.collection.replace_one(condition, obj, upsert=True)
+    if result.upserted_id is None:
+      return None
+    else:
+      return position
+  
+  def delete(self, position):
+    """
+    (self: Positions, position: Position) -> Position
+    """
+    obj = position.toDict()
+    result = self.collection.delete_one({'timestamp': obj['timestamp']})
+    if result.deleted_count == 0:
+        return None
+    else:
+        return position

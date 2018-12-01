@@ -13,7 +13,8 @@ class OnePosition(object):
   SideLong = 'long'
   SideShort = 'short'
   
-  def __init__(self, sizes, prices, ids=None, side=None):
+  def __init__(self, exchanger, sizes, prices, ids=None, side=None):
+    self.exchanger = exchanger
     self.sizes = sizes
     self.prices = prices
     self.ids = ids
@@ -21,6 +22,7 @@ class OnePosition(object):
   
   def toDict(self):
     obj = {
+      'exchanger': self.exchanger,
       'sizes': self.sizes,
       'prices': self.prices,
       'ids': self.ids,
@@ -32,24 +34,64 @@ class OnePosition(object):
   def fromDict(obj):
     if obj is None:
       return None
-    one = OnePosition(obj['sizes'], obj['prices'], obj['ids'], obj['side'])
+    one = OnePosition(obj['exchanger'],
+                      obj['sizes'], obj['prices'], obj['ids'], obj['side'])
     return one
-   
+  
   def amount(self):
     return OnePosition.inner_product(self.sizes, self.prices)
-
+  
   def whole_size(self):
     return sum(self.sizes)
-
+  
   def __str__(self):
-    text = ('OnePosition(sizes={sizes}, prices={prices}, ids={ids}, side={side}'
-            .format(sizes=self.sizes, prices=self.prices,
+    text = (('OnePosition(exchanger={exchanger}, ' +
+             'sizes={sizes}, prices={prices}, ids={ids}, side={side}')
+            .format(exchanger=self.exchanger,
+                    sizes=self.sizes, prices=self.prices,
                     ids=self.ids, side=self.side))
     return text
-
+  
   @staticmethod
   def inner_product(A, B):
     return sum(a * b for (a, b) in zip(A, B))
+
+
+class Position(object):
+  StatusOpen = 'open'
+  StatusClose = 'close'
+  StatusReset = 'reset'
+  StatusOpening = 'opening'
+  StatusClosing = 'closing'
+
+  def __init__(self, date, status, positions):
+    self.date = date
+    self.status = status
+    self.positions = positions
+  
+  @staticmethod
+  def fromDict(obj):
+    if obj is None:
+      return None
+    date = datetime.datetime.fromtimestamp(obj['timestamp'])
+    status = obj['status']
+    positions = [OnePosition.fromDict(p) for p in obj['positions']]
+    return Position(date, status, positions)
+  
+  def toDict(self):
+    obj = {
+      'timestamp': self.date.timestamp(),
+      'status': self.status,
+      'positions': [p.toDict() for p in self.positions]
+    }
+    return obj
+  
+  def __str__(self):
+    positions = ', '.join(list(str, self.positions))
+    text = ('Position(date={date}, status={status}, positions=[{positions}]'
+            .format(datetimeToStr(self.date), self.status,
+                    positions=positions))
+    return text
 
 
 class Confidence(object):

@@ -35,6 +35,7 @@ class BitFlyer(object):
     if logger is None:
       logger = logging.getLogger()
     self.logger = logger
+    self.name = Tick.BitFlyer
     now = datetime.datetime.now()
     self.starttime = time.mktime(now.timetuple())
     self.user_secret = user_secret
@@ -383,7 +384,7 @@ class BitFlyer(object):
         continue
       sizes = [float(e['size']) for e in executions]
       prices = [float(e['price']) for e in executions]
-      position = OnePosition(sizes, prices, None)
+      position = OnePosition(self.name, sizes, prices, None)
       return position
     self.logger.debug(('Failed to fetch the order result in BitFlyer, ' +
                        'order_id={id}')

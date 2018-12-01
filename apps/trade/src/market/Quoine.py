@@ -30,7 +30,7 @@ class Quoine(object):
         if logger is None:
             logger = logging.getLogger()
         self.logger = logger
-        
+        self.name = Tick.Quoine
         self.logger.debug("Quoine.__init__処理開始")
 
         now = datetime.datetime.now()
