@@ -43,3 +43,13 @@ def test_ConfidenceListener_used():
   confidence = Confidence(datetime.datetime.now(), 0, 0, Confidence.StatusUsed)
   listener = ConfidenceListener(models, Player=NGPlayer)
   listener.handleEntry(confidence)
+
+def test_PositionListener_list():
+  exchanger = 'test'
+  positions = [Position(datetime.datetime.now(), Position.StatusOpening, [])]
+  listener = PositionListener(models, Player=OKPlayer)
+  listener.handleEntry(positions)
+
+def test_PositionListener_empty():
+  listener = PositionListener(models, Player=NGPlayer)
+  listener.handleEntry([])

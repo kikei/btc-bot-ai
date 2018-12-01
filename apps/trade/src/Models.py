@@ -1,3 +1,5 @@
+import itertools
+
 from classes import OnePosition, Confidence, Trade
 
 class Models(object):
@@ -211,6 +213,23 @@ class Positions(object):
     positions = self.collection.find().sort('timestamp', -1)
     positions = [Position.fromDict(p) for p in positions]
     return positions
+
+  @staticmethod
+  def filterOpen(positions):
+    """
+    [Positions] -> [Position]
+    """
+    positions = itertools.takewhile(lambda p:p.isNotClosed(), positions)
+    positions = filter(lambda p:p.isOpen(), positions)
+    return list(positions)
+
+  def currentOpen(self):
+    """
+    (self: Positions) -> [Position]
+    """
+    positions = self.collection.find().sort('timestamp', -1)
+    positions = (Position.fromDict(p) for p in positions)
+    return filterOpen(positions)
   
   def save(self, position):
     """

@@ -9,12 +9,14 @@ import sys
 CWD = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(CWD, '..', 'conf'))
 
+from monitors.AbstractListener import AbstractListener
+from monitors.monitors import ConfidenceMonitor, PositionMonitor
+
 import Properties
 
 from classes import Confidence
 from Models import Models
 from TradingPlayer import TradingPlayer
-from ConfidenceMonitor import ConfidenceMonitor
 
 def getDBInstance(host=None, port=None):
   if host is None:
@@ -48,7 +50,7 @@ def checkProperties():
   return True
 
 
-class ConfidenceListener(object):
+class ConfidenceListener(AbstractListener):
   def __init__(self, models, Player=None, logger=None):
     if logger is None:
       logger = logging.getLogger()
@@ -69,13 +71,35 @@ class ConfidenceListener(object):
     else:
       self.logger.debug('No new confidence.')
 
+class PositionListener(AbstractListener):
+  def __init__(self, models, Player=None, logger=None):
+    if logger is None:
+      logger = logging.getLogger()
+    self.logger = logger
+    if Player is None:
+      Player = TradingPlayer()
+    self.player = Player(models, logger=logger)
+  
+  def handleEntry(self, positions):
+    if len(positions) > 0:
+      self.logger.info('Open positions exists, positions={positions}.'
+                       .format(positions=positions))
+      self.player.run()
+    else:
+      self.logger.debug('No opening position.')
 
 def runStep(logger=None):
   models = getModels(getDBInstance())
-  listener = ConfidenceListener(models, logger=logger)
-  monitor = ConfidenceMonitor(models, loop=False, logger=logger)
-  monitor.setListener(listener)
-  monitor.start()
+  confidenceListener = ConfidenceListener(models, logger=logger)
+  confidenceMonitor = ConfidenceMonitor(models, loop=False, logger=logger)
+  confidenceMonitor.setListener(confidenceListener)
+  
+  positionListener = PositionListener(models, logger=logger)
+  positionMonitor = PositionMonitor(models, loop=False, logger=logger)
+  positionMonitor.setListener(positionListener)
+  
+  confidenceMonitor.start()
+  positionMonitor.start()
 
 
 def main():

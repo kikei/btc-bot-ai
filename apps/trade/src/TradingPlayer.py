@@ -2,7 +2,7 @@ import logging
 
 from classes import PlayerActions
 from ActionsDispatcher import ActionsDispatcher, Action
-from ConfidenceMonitor import FinishMonitoring
+from monitors.AbstractMonitor import FinishMonitoring
 from BudgetManager import BudgetManager
 from TradeExecutor import TradeExecutor
 

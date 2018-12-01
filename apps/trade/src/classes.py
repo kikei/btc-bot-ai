@@ -60,7 +60,6 @@ class OnePosition(object):
 class Position(object):
   StatusOpen = 'open'
   StatusClose = 'close'
-  StatusReset = 'reset'
   StatusOpening = 'opening'
   StatusClosing = 'closing'
 
@@ -96,7 +95,12 @@ class Position(object):
             .format(date=datetimeToStr(self.date), status=self.status,
                     positions=positions))
     return text
-
+  
+  def isNotClosed(self):
+    return self.status in [Position.StatusOpen, Position.StatusOpening]
+  
+  def isOpen(self):
+    return self.status in [Position.StatusOpen]
 
 class Confidence(object):
   StatusNew = 'new'
