@@ -56,8 +56,9 @@ def test_roundLot(modelsDummy):
 def test_openPosition(modelsDummy):
   models = modelsDummy
   executor = TradeExecutor(models)
+  exchanger = 'test'
   lot = 1.0
-  position = OnePosition([1.0], [1.0], OnePosition.SideLong)
+  position = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
   def traderFun(lot_):
     assert lot_ == lot
     return position
@@ -69,10 +70,11 @@ def test_openPosition(modelsDummy):
 def test_handleOpen_ok(modelsDummy):
   models = modelsDummy
   executor = TradeExecutor(models)
+  exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
   lot = 1.0
-  position = OnePosition([1.0], [1.0], OnePosition.SideLong)
+  position = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
   def traderFun(lot_):
     assert lot_ == lot
     return position
@@ -87,10 +89,11 @@ def test_handleOpen_ok(modelsDummy):
 def test_handleOpen_lot0(modelsDummy):
   models = modelsDummy
   executor = TradeExecutor(models)
+  exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
   lot = 0.0
-  position = OnePosition([1.0], [1.0], OnePosition.SideLong)
+  position = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
   def traderFun(lot_):
     assert False
   confidence = Confidence(datetime.datetime.now(),
@@ -104,10 +107,11 @@ def test_handleOpen_lot0(modelsDummy):
 def test_handleOpen_tradeNG(modelsDummy):
   models = modelsDummy
   executor = TradeExecutor(models)
+  exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
   lot = 1.0
-  position = OnePosition([1.0], [1.0], OnePosition.SideLong)
+  position = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
   def traderFun(lot_):
     assert lot_ == lot
     return None
@@ -122,10 +126,11 @@ def test_handleOpen_tradeNG(modelsDummy):
 def test_handleOpen_tradeError(modelsDummy):
   models = modelsDummy
   executor = TradeExecutor(models)
+  exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
   lot = 1.0
-  position = OnePosition([1.0], [1.0], OnePosition.SideLong)
+  position = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
   def traderFun(lot_):
     raise BitFlyerAPIError('error')
   confidence = Confidence(datetime.datetime.now(),
