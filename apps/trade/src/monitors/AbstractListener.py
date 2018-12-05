@@ -1,8 +1,7 @@
-from abc import ABCMeta, abstractmethod
+from abc import ABC, abstractmethod
 
-class AbstractListener(object):
-  __metaclass__ = ABCMeta
-
+class AbstractListener(ABC):
+  
   @abstractmethod
   def handleEntry(self):
     raise NotImplementedError('handleEntry')

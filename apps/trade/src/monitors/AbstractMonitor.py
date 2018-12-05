@@ -1,4 +1,4 @@
-from abc import ABCMeta
+from abc import ABC
 import logging
 
 from .AbstractListener import AbstractListener, abstractmethod
@@ -8,8 +8,7 @@ class PassListener(AbstractListener):
   def handleEntry(self):
     return None
 
-class AbstractMonitor(object):
-  __metaclass__ = ABCMeta
+class AbstractMonitor(ABC):
   
   def __init__(self, models, loop=True, monitorInterval=3, logger=None):
     if logger is None:
