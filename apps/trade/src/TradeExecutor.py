@@ -41,6 +41,34 @@ class TradeExecutor(object):
     position = models.Positions.save(position_)
     return trade, position
 
+  def closePosition(self, position):
+    """
+    (self: TradeExecutor, position: Position) -> Trade, Position
+    """
+    models = self.models
+    ones = []
+    for p in position.positions:
+      try:
+        one = self.trader.closePosition(p)
+        if one is None:
+          continue
+        ones.append(one)
+      except Exception as e:
+        self.logger.error('Unexpected error occured in closing position, e={e}'
+                          .format(e=e))
+        continue
+    if len(ones) == 0:
+      return None, None
+    now = datetime.datetime.now()
+    trades = []
+    for one in ones:
+      trade_ = Trade(now, one)
+      trade = models.Trades.save(trade_)
+      trades.append(trade)
+    position.status = Position.StatusClose
+    position = models.Positions.save(position)
+    return trades, position
+  
   def handleOpen(self, confidence, lot, traderFun):
     """
     (self: TradeExecutor, confidence: Confidence, lot: float,
@@ -62,7 +90,7 @@ class TradeExecutor(object):
     models.Confidences.save(confidence)
     self.logger.warning('Successfully opened, trade={}'.format(trade))
     return True
-
+  
   def handleOpenLong(self, confidence, lot):
     """
     (self: TradeExecutor, confidence: Confidence, lot: float) -> Trade
@@ -74,4 +102,21 @@ class TradeExecutor(object):
     (self: TradeExecutor, confidence: Confidence, lot: float) -> Trade
     """
     return self.handleOpen(confidence, lot, self.trader.openShortPosition)
-    
+  
+  def handleClose(self, position):
+    """
+    (self: TraderExecutor, position: Position) -> bool
+    """
+    if not position.isOpen():
+      return False
+    # Closing
+    trade, position = self.closePosition(position)
+    if trade is None or position is None:
+      self.logger.error('Failed to close position, position={p}'
+                        .format(p=position))
+      return False
+    # Update DB
+    models = self.models
+    models.Positions.save(position)
+    self.logger.warning('Successfully closed, trade={t}'.format(t=trade))
+    return True

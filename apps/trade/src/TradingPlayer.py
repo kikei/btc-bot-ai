@@ -29,6 +29,7 @@ class TradingPlayer(object):
     dispatcher.adds({
       PlayerActions.OpenLong: executor.handleOpenLong,
       PlayerActions.OpenShort: executor.handleOpenShort,
+      PlayerActions.ClosePosition: executor.handleClose,
       PlayerActions.Exit: lambda: FinishMonitoring.raiseEvent('Exit')
     })
     self.dispatcher = dispatcher

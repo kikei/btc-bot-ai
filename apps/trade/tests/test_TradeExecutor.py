@@ -15,6 +15,13 @@ from market.BitFlyer import BitFlyerAPIError
 def models():
   return getModels(getDBInstance())
 
+class DummyTrader(object):
+  def closePosition(self, position):
+    size = position.sizeWhole()
+    price = position.priceMean()
+    return OnePosition(position.exchanger, [size/2.0, size/2.0],
+                       [price*2.0, price*2.0], side=position.sideReverse())
+
 @pytest.fixture
 def modelsDummy():
   class Models(object):
@@ -154,3 +161,63 @@ def test_handleOpen_tradeError(modelsDummy):
   assert result is False
   assert confidence.isStatusOf(Confidence.StatusNew)
   assert models.Confidences.collection[confidence.date] == confidence
+
+def test_closePosition(modelsDummy):
+  models = modelsDummy
+  executor = TradeExecutor(models, trader=DummyTrader())
+  exchanger = 'test'
+  lot = 1.0
+  one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
+  def traderFun(lot_): return one
+  _, position = executor.openPosition(lot, traderFun)
+  trades, position = executor.closePosition(position)
+  assert(len(trades) == 1)
+  assert isinstance(trades[0], Trade)
+  assert isinstance(trades[0].date, datetime.datetime)
+  assert trades[0].position.sizeWhole() == one.sizeWhole()
+  assert models.Trades.collection[trades[0].date] == trades[0]
+  assert isinstance(position, Position)
+  assert isinstance(position.date, datetime.datetime)
+  assert position.status == Position.StatusClose
+  assert len(position.positions) == 1
+  assert models.Positions.collection[position.date] == position
+
+def test_handleClose_ok(modelsDummy):
+  models = modelsDummy
+  executor = TradeExecutor(models, trader=DummyTrader())
+  exchanger = 'test'
+  date = datetime.datetime.now()
+  one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
+  position = Position(date, Position.StatusOpen, [one])
+  result = executor.handleClose(position)
+  assert result
+  saved = models.Positions.collection.popitem()[1]
+  assert isinstance(saved, Position)
+  assert isinstance(saved.date, datetime.datetime)
+  assert saved.status == Position.StatusClose
+  assert len(saved.positions) == 1
+
+def test_handleClose_closed(modelsDummy):
+  models = modelsDummy
+  executor = TradeExecutor(models, trader=DummyTrader())
+  exchanger = 'test'
+  date = datetime.datetime.now()
+  one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
+  position = Position(date, Position.StatusClose, [one])
+  result = executor.handleClose(position)
+  assert not result
+  assert len(models.Positions.collection) == 0
+
+def test_handleClose_tradeError(modelsDummy):
+  class ErrorTrader(object):
+    def closePosition(self, position):
+      raise BitFlyerAPIError('error')
+  models = modelsDummy
+  executor = TradeExecutor(models, ErrorTrader())
+  exchanger = 'test'
+  date = datetime.datetime.now()
+  one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
+  position = Position(date, Position.StatusOpen, [one])
+  result = executor.handleClose(position)
+  assert result is False
+

@@ -320,17 +320,18 @@ class BitFlyer(object):
     """
     Close position.
 
-    { position: OnePosition ) -> bool
+    { position: OnePosition ) -> OnePosition
 
     Refer:
     [新規注文を出す](https://lightning.bitflyer.jp/docs?lang=ja#新規注文を出す)
 
     NOTE: The minimum order size is 0.001 BTC.
     """
-    side = position.reverse_side()
-    size = position.whole_size()
+    side = position.sideReverse()
+    size = position.sizeWhole()
     size = round(size,3)
     price = position.amount() / size
+    starttime = datetime.datetime.now().timestamp()
     order_id = self.exec_order(side, price, size)
     executed = self.wait_last_order_executed()
     if not executed:
@@ -340,8 +341,12 @@ class BitFlyer(object):
                          'as last order is assumed to be executed')
       else:
         self.logger.warning('Failed to execute order in BitFlyer.')
-        return False
-    return True
+        return None
+    position = self.get_order(starttime, order_id)
+    position.side = side
+    self.logger.debug('Completed to close a position, position={p}.'
+                      .format(p=position))
+    return position
 
   def get_orders(self):
     """

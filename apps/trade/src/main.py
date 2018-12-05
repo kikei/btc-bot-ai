@@ -17,6 +17,8 @@ import Properties
 from classes import Confidence
 from Models import Models
 from TradingPlayer import TradingPlayer
+from PositionsPlayer import PositionsPlayer
+from PositionsManager import PositionsManager
 
 def getDBInstance(host=None, port=None):
   if host is None:
@@ -72,12 +74,10 @@ class ConfidenceListener(AbstractListener):
       self.logger.debug('No new confidence.')
 
 class PositionListener(AbstractListener):
-  def __init__(self, models, Player=None, logger=None):
+  def __init__(self, models, Player, logger=None):
     if logger is None:
       logger = logging.getLogger()
     self.logger = logger
-    if Player is None:
-      Player = TradingPlayer()
     self.player = Player(models, logger=logger)
   
   def handleEntry(self, positions):
@@ -88,19 +88,25 @@ class PositionListener(AbstractListener):
     else:
       self.logger.debug('No opening position.')
 
+def createPositionsPlayer(models, logger=None):
+  return PositionPlayer(models,
+                        ActionCreator=PositionsManager,
+                        ActionExecutor=TradeExecutor,
+                        logger=logger)
+
 def runStep(logger=None):
   models = getModels(getDBInstance())
   confidenceListener = ConfidenceListener(models, logger=logger)
   confidenceMonitor = ConfidenceMonitor(models, loop=False, logger=logger)
   confidenceMonitor.setListener(confidenceListener)
   
-  positionListener = PositionListener(models, logger=logger)
+  positionListener = PositionListener(models, Player=createPositionPlayer,
+                                      logger=logger)
   positionMonitor = PositionMonitor(models, loop=False, logger=logger)
   positionMonitor.setListener(positionListener)
   
   confidenceMonitor.start()
   positionMonitor.start()
-
 
 def main():
   checkOk = checkProperties()
