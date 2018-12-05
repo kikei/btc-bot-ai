@@ -10,8 +10,8 @@ def strToDatetime(s):
 
 
 class OnePosition(object):
-  SideLong = 'long'
-  SideShort = 'short'
+  SideLong = 'LONG'
+  SideShort = 'SHORT'
   
   def __init__(self, exchanger, sizes, prices, ids=None, side=None):
     self.exchanger = exchanger
@@ -42,7 +42,20 @@ class OnePosition(object):
     return OnePosition.inner_product(self.sizes, self.prices)
   
   def whole_size(self):
+    "DEPRECATED"
+    return self.sizeWhole()
+
+  def sizeWhole(self):
     return sum(self.sizes)
+
+  def priceMean(self):
+    return self.amount() / self.sizeWhole()
+  
+  def sideReverse(self):
+    if self.side == OnePosition.SideLong:
+      return OnePosition.SideShort
+    else:
+      return OnePosition.SideLong
   
   def __str__(self):
     text = (('OnePosition(exchanger={exchanger}, ' +
@@ -171,34 +184,29 @@ class Trade(object):
     return ('Trade(date={date}, position={position})'
             .format(date=datetimeToStr(self.date), position=str(self.position)))
 
+
 class OneTick(object):
   def __init__(self, ask, bid, date=None):
     self.ask = float(ask)
     self.bid = float(bid)
     if date is None:
-      date = OneTick.date_string()
+      date = datetime.datetime.now()
     self.date = date
 
   def spread(self):
     return self.ask - self.bid
 
   @staticmethod
-  def date_string(time=None):
-    if time is None:
-      time = datetime.now()
-    date = time.strftime("%Y-%m-%d %H:%M:%S")
-    return date
-
-  @staticmethod
-  def from_dict(obj):
+  def fromDict(obj):
     if obj is None:
       return None
-    one = OneTick(obj['ask'], obj['bid'], obj['datetime'])
+    date = strToDatetime(obj['datetime'])
+    one = OneTick(obj['ask'], obj['bid'], date)
     return one
   
-  def to_dict(self):
+  def toDict(self):
     obj = {
-      'datetime': self.date,
+      'datetime': self.date.timestamp(),
       'ask': self.ask,
       'bid': self.bid
     }
@@ -262,9 +270,14 @@ class Balance(object):
 
 class PlayerActions:
   """
-  Open: (confidence: Confidence, lot: float)
+  OpenLong: (confidence: Confidence, lot: float)
+  OpenShort: (confidence: Confidence, lot: float)
+  CloseForProfit: (position: Position)
+  CloseForLossCut: (position: Position)
   Exit: ()
   """
   OpenLong = 'OpenLong'
   OpenShort = 'OpenShort'
+  CloseForProfit = 'CloseForProfit'
+  CloseForLossCut = 'CloseForLossCut'
   Exit = 'Exit'

@@ -5,8 +5,10 @@ from classes import OnePosition, Confidence, Trade
 class Models(object):
     def __init__(self, dbs):
       btctai_db = dbs.btctai_db
+      tick_db = dbs.tick_db
       self.Values = Values(btctai_db)
       self.Confidences = Confidences(btctai_db)
+      self.Ticks = Ticks(tick_db)
       self.Trades = Trades(btctai_db)
       self.Positions = Position(btctai_db)
 
@@ -15,6 +17,9 @@ class Models(object):
 
     def Confidences(self):
       return self.Confidences
+
+    def Ticks(self):
+      return self.Ticks
 
     def Trades(self):
       return self.Trades
@@ -30,13 +35,17 @@ class Values(object):
   AdjusterSpeed = 'adjuster.speed'
   AdjusterLastDirection = 'adjuster.direction'
   AdjusterThresConf = 'adjuster.confidence.thres'
+  PositionThresProfit = 'position.profit.thres'
+  PositionThresLossCut = 'position.losscut.thres'
   AllKeys = [
     Enabled,
     AdjusterStep,
     AdjusterStop,
     AdjusterSpeed,
     AdjusterLastDirection,
-    AdjusterThresConf
+    AdjusterThresConf,
+    PositionThresProfit,
+    PositionThresLossCut
   ]
   AllTypes = {
     Enabled: 'boolean',
@@ -44,7 +53,9 @@ class Values(object):
     AdjusterStop: 'float',
     AdjusterSpeed: 'float',
     AdjusterLastDirection: 'int',
-    AdjusterThresConf: 'float'
+    AdjusterThresConf: 'float',
+    PositionThresProfit: 'float',
+    PositionThresLossCut: 'float'
   }
   
   def __init__(self, db):
@@ -114,8 +125,59 @@ class Values(object):
     if ty == 'string':
       types = [str]
     return type(value) in types
-    
-    
+
+class Ticks(object):
+  def __init__(self, db):
+    self.db = db
+    self.collection_bf = self.db.tick_bitflyer
+    self.collection_qn = self.db.tick_quoine
+    self.collections = {
+      Tick.BitFlyer: self.collection_bf,
+      Tick.Quoine: self.collection_qn
+    }
+  
+  def one(self):
+    """
+    (self: Ticks) -> Tick
+    """
+    tick_bf_cur = self.collection_bf.find().sort('datetime', -1).limit(1)
+    tick_qn_cur = self.collection_qn.find().sort('datetime', -1).limit(1)
+    tick_bf = next(tick_bf_cur, None)
+    tick_qn = next(tick_qn_cur, None)
+    if tick_bf is not None:
+      one_tick_bf = OneTick.fromDict(tick_bf)
+    if tick_qn is not None:
+      one_tick_qn = OneTick.fromDict(tick_qn)
+    return Tick({
+      Tick.BitFlyer: one_tick_bf,
+      Tick.Quoine: one_tick_qn
+    })
+  
+  def all(self, exchangers=None, date_start=None, date_end=None, limit=10):
+    if exchangers is None:
+      exchangers = Tick.exchangers()
+    collections = [self.collections[e] for e in exchangers]
+    conditions = []
+    if date_start is not None:
+      conditions.append({'datetime': {'$gt': date_start}})
+    if date_end is not None:
+      conditions.append({'datetime': {'$lte': date_end}})
+    if len(conditions) > 0:
+      curs = [c.find({'$and': conditions}) for c in collections]
+    else:
+      curs = [c.find() for c in collections]
+    curs = [c.sort('datetime', -1).limit(limit) for c in curs]
+    result = {}
+    for e, cur in zip(exchangers, curs):
+      result[e] = [OneTick.fromDict(t) for t in cur]
+    return result
+  
+  def save(self, tick):
+    """
+    (self: Ticks, tick: Tick) -> Tick
+    """
+    raise NotImplementedError('Ticks.save')
+ 
 class Confidences(object):
   def __init__(self, db):
     self.collection = db.confidences
