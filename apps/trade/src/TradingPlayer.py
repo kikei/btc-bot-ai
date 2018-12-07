@@ -31,7 +31,8 @@ class TradingPlayer(object):
       PlayerActions.OpenLong: executor.handleOpenLong,
       PlayerActions.OpenShort: executor.handleOpenShort,
       PlayerActions.IgnoreConfidence: executor.handleIgnoreConfidence,
-      PlayerActions.ClosePosition: executor.handleClose,
+      PlayerActions.CloseForProfit: executor.handleClose,
+      PlayerActions.CloseForLossCut: executor.handleClose,
       PlayerActions.Exit: lambda: FinishMonitoring.raiseEvent('Exit')
     })
     self.dispatcher = dispatcher

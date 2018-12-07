@@ -12,7 +12,7 @@ class Models(object):
       self.Confidences = Confidences(btctai_db)
       self.Ticks = Ticks(tick_db)
       self.Trades = Trades(btctai_db)
-      self.Positions = Position(btctai_db)
+      self.Positions = Positions(btctai_db)
 
     def Values(self):
       return self.Values
@@ -56,7 +56,7 @@ class Ticks(object):
       if t is None:
         result[e] = None
       else:
-        result[e] = OneTick.from_dict(t)
+        result[e] = OneTick.fromDict(t)
     return result
 
   def all(self, exchangers=None, start=None, end=None, limit=10, order=-1):
@@ -84,7 +84,7 @@ class Ticks(object):
     curs = [c.sort('datetime', order).limit(limit) for c in curs]
     result = {}
     for e, cur in zip(exchangers, curs):
-      result[e] = [OneTick.from_dict(t) for t in cur]
+      result[e] = [OneTick.fromDict(t) for t in cur]
     return result
 
   def save(self, tick, exchangers=None):
@@ -314,17 +314,19 @@ class Trades(object):
 
 class Positions(object):
   def __init__(self, db):
-    self.collection = self.db.positions
+    self.collection = db.positions
     self.setup()
   
   def setup(self):
-    self.collection.create_index('timestamp')
+    self.collection.create_index([('account_id', pymongo.TEXT),
+                                  ('timestamp', pymongo.DESCENDING)])
   
-  def all(self):
+  def all(self, accountId):
     """
     (self: Positions) -> [Position]
     """
-    positions = self.collection.find().sort('timestamp', -1)
+    condition = {'account_id': accountId}
+    positions = self.collection.find(condition).sort('timestamp', -1)
     positions = [Position.fromDict(p) for p in positions]
     return positions
 
@@ -337,32 +339,41 @@ class Positions(object):
     positions = filter(lambda p:p.isOpen(), positions)
     return list(positions)
 
-  def currentOpen(self):
+  def currentOpen(self, accountId):
     """
     (self: Positions) -> [Position]
     """
-    positions = self.collection.find().sort('timestamp', -1)
+    condition = {'account_id': accountId}
+    positions = self.collection.find(condition).sort('timestamp', -1)
     positions = (Position.fromDict(p) for p in positions)
-    return filterOpen(positions)
+    return Positions.filterOpen(positions)
   
-  def save(self, position):
+  def save(self, position, accountId):
     """
     (self: Positions, position: Position) -> Position
     """
     obj = position.toDict()
-    condition = {'timestamp': obj['timestamp']}
+    obj['account_id'] = accountId
+    condition = {'$and': [
+      {'account_id': accountId},
+      {'timestamp': obj['timestamp']}
+    ]}
     result = self.collection.replace_one(condition, obj, upsert=True)
     if result.upserted_id is None:
       return None
     else:
       return position
   
-  def delete(self, position):
+  def delete(self, position, accountId):
     """
     (self: Positions, position: Position) -> Position
     """
     obj = position.toDict()
-    result = self.collection.delete_one({'timestamp': obj['timestamp']})
+    condition = {'$and': [
+      {'account_id': accountId},
+      {'timestamp': obj['timestamp']}
+    ]}
+    result = self.collection.delete_one(condition)
     if result.deleted_count == 0:
         return None
     else:
