@@ -1,5 +1,7 @@
+import itertools
 import datetime
 import pymongo
+
 from classes import Tick, OneTick, OnePosition, Confidence, Trade, datetimeToStr
 
 class Models(object):
@@ -8,11 +10,9 @@ class Models(object):
       tick_db = dbs.tick_db
       self.Values = Values(btctai_db)
       self.Confidences = Confidences(btctai_db)
-      self.Trades = Trades(btctai_db)
       self.Ticks = Ticks(tick_db)
-
-    def Ticks(self):
-      return self.Ticks
+      self.Trades = Trades(btctai_db)
+      self.Positions = Position(btctai_db)
 
     def Values(self):
       return self.Values
@@ -20,8 +20,14 @@ class Models(object):
     def Confidences(self):
       return self.Confidences
 
+    def Ticks(self):
+      return self.Ticks
+
     def Trades(self):
       return self.Trades
+
+    def Positions(self):
+      return self.Positions
 
 
 class Ticks(object):
@@ -108,6 +114,8 @@ class Values(object):
   AdjusterLotMin = 'adjuster.lot.min'
   AdjusterLotInit = 'adjuster.lot.init'
   AdjusterLotDecay = 'adjuster.lot.decay'
+  PositionThresProfit = 'position.profit.thres'
+  PositionThresLossCut = 'position.losscut.thres'
   AllKeys = [
     Enabled,
     AdjusterStep,
@@ -117,7 +125,9 @@ class Values(object):
     AdjusterThresConf,
     AdjusterLotMin,
     AdjusterLotInit,
-    AdjusterLotDecay
+    AdjusterLotDecay,
+    PositionThresProfit,
+    PositionThresLossCut
   ]
   AllTypes = {
     Enabled: 'boolean',
@@ -128,7 +138,9 @@ class Values(object):
     AdjusterThresConf: 'float',
     AdjusterLotMin: 'float',
     AdjusterLotInit: 'float',
-    AdjusterLotDecay: 'float'
+    AdjusterLotDecay: 'float',
+    PositionThresProfit: 'float',
+    PositionThresLossCut: 'float'
   }
   
   def __init__(self, db):
@@ -193,8 +205,8 @@ class Values(object):
     if ty == 'string':
       types = [str]
     return type(value) in types
-    
-    
+
+ 
 class Confidences(object):
   def __init__(self, db):
     self.collection = db.confidences
@@ -300,3 +312,58 @@ class Trades(object):
     else:
       return trade
 
+class Positions(object):
+  def __init__(self, db):
+    self.collection = self.db.positions
+    self.setup()
+  
+  def setup(self):
+    self.collection.create_index('timestamp')
+  
+  def all(self):
+    """
+    (self: Positions) -> [Position]
+    """
+    positions = self.collection.find().sort('timestamp', -1)
+    positions = [Position.fromDict(p) for p in positions]
+    return positions
+
+  @staticmethod
+  def filterOpen(positions):
+    """
+    [Positions] -> [Position]
+    """
+    positions = itertools.takewhile(lambda p:p.isNotClosed(), positions)
+    positions = filter(lambda p:p.isOpen(), positions)
+    return list(positions)
+
+  def currentOpen(self):
+    """
+    (self: Positions) -> [Position]
+    """
+    positions = self.collection.find().sort('timestamp', -1)
+    positions = (Position.fromDict(p) for p in positions)
+    return filterOpen(positions)
+  
+  def save(self, position):
+    """
+    (self: Positions, position: Position) -> Position
+    """
+    obj = position.toDict()
+    condition = {'timestamp': obj['timestamp']}
+    result = self.collection.replace_one(condition, obj, upsert=True)
+    if result.upserted_id is None:
+      return None
+    else:
+      return position
+  
+  def delete(self, position):
+    """
+    (self: Positions, position: Position) -> Position
+    """
+    obj = position.toDict()
+    result = self.collection.delete_one({'timestamp': obj['timestamp']})
+    if result.deleted_count == 0:
+        return None
+    else:
+        return position

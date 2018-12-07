@@ -10,10 +10,11 @@ def strToDatetime(s):
 
 
 class OnePosition(object):
-  SideLong = 'long'
-  SideShort = 'short'
+  SideLong = 'LONG'
+  SideShort = 'SHORT'
   
-  def __init__(self, sizes, prices, ids=None, side=None):
+  def __init__(self, exchanger, sizes, prices, ids=None, side=None):
+    self.exchanger = exchanger
     self.sizes = sizes
     self.prices = prices
     self.ids = ids
@@ -21,6 +22,7 @@ class OnePosition(object):
   
   def toDict(self):
     obj = {
+      'exchanger': self.exchanger,
       'sizes': self.sizes,
       'prices': self.prices,
       'ids': self.ids,
@@ -32,25 +34,86 @@ class OnePosition(object):
   def fromDict(obj):
     if obj is None:
       return None
-    one = OnePosition(obj['sizes'], obj['prices'], obj['ids'], obj['side'])
+    one = OnePosition(obj['exchanger'],
+                      obj['sizes'], obj['prices'], obj['ids'], obj['side'])
     return one
-   
+  
   def amount(self):
     return OnePosition.inner_product(self.sizes, self.prices)
-
+  
   def whole_size(self):
+    "DEPRECATED"
+    return self.sizeWhole()
+
+  def sizeWhole(self):
     return sum(self.sizes)
 
+  def priceMean(self):
+    return self.amount() / self.sizeWhole()
+  
+  def sideReverse(self):
+    if self.side == OnePosition.SideLong:
+      return OnePosition.SideShort
+    else:
+      return OnePosition.SideLong
+  
   def __str__(self):
-    text = ('OnePosition(sizes={sizes}, prices={prices}, ids={ids}, side={side}'
-            .format(sizes=self.sizes, prices=self.prices,
+    text = (('OnePosition(exchanger={exchanger}, ' +
+             'sizes={sizes}, prices={prices}, ids={ids}, side={side}')
+            .format(exchanger=self.exchanger,
+                    sizes=self.sizes, prices=self.prices,
                     ids=self.ids, side=self.side))
     return text
-
+  
   @staticmethod
   def inner_product(A, B):
     return sum(a * b for (a, b) in zip(A, B))
 
+
+class Position(object):
+  StatusOpen = 'open'
+  StatusClose = 'close'
+  StatusOpening = 'opening'
+  StatusClosing = 'closing'
+
+  def __init__(self, date, status, positions):
+    """
+    (self: Position, date: datetime, status: str, positions: [OnePosition])
+    -> Position
+    """
+    self.date = date
+    self.status = status
+    self.positions = positions
+  
+  @staticmethod
+  def fromDict(obj):
+    if obj is None:
+      return None
+    date = datetime.datetime.fromtimestamp(obj['timestamp'])
+    status = obj['status']
+    positions = [OnePosition.fromDict(p) for p in obj['positions']]
+    return Position(date, status, positions)
+  
+  def toDict(self):
+    obj = {
+      'timestamp': self.date.timestamp(),
+      'status': self.status,
+      'positions': [p.toDict() for p in self.positions]
+    }
+    return obj
+  
+  def __str__(self):
+    positions = ', '.join(str(p) for p in self.positions)
+    text = ('Position(date={date}, status={status}, positions=[{positions}]'
+            .format(date=datetimeToStr(self.date), status=self.status,
+                    positions=positions))
+    return text
+  
+  def isNotClosed(self):
+    return self.status in [Position.StatusOpen, Position.StatusOpening]
+  
+  def isOpen(self):
+    return self.status in [Position.StatusOpen]
 
 class Confidence(object):
   StatusNew = 'new'
@@ -122,34 +185,29 @@ class Trade(object):
     return ('Trade(date={date}, position={position})'
             .format(date=datetimeToStr(self.date), position=str(self.position)))
 
+
 class OneTick(object):
   def __init__(self, ask, bid, date=None):
     self.ask = float(ask)
     self.bid = float(bid)
     if date is None:
-      date = OneTick.date_string()
+      date = datetime.datetime.now()
     self.date = date
 
   def spread(self):
     return self.ask - self.bid
 
   @staticmethod
-  def date_string(time=None):
-    if time is None:
-      time = datetime.now()
-    date = time.strftime("%Y-%m-%d %H:%M:%S")
-    return date
-
-  @staticmethod
-  def from_dict(obj):
+  def fromDict(obj):
     if obj is None:
       return None
-    one = OneTick(obj['ask'], obj['bid'], obj['datetime'])
+    date = strToDatetime(obj['datetime'])
+    one = OneTick(obj['ask'], obj['bid'], date)
     return one
   
-  def to_dict(self):
+  def toDict(self):
     obj = {
-      'datetime': self.date,
+      'datetime': self.date.timestamp(),
       'ask': self.ask,
       'bid': self.bid
     }
@@ -213,10 +271,15 @@ class Balance(object):
 
 class PlayerActions:
   """
-  Open: (confidence: Confidence, lot: float)
+  OpenLong: (confidence: Confidence, lot: float)
+  OpenShort: (confidence: Confidence, lot: float)
+  CloseForProfit: (position: Position)
+  CloseForLossCut: (position: Position)
   Exit: ()
   """
   OpenLong = 'OpenLong'
   OpenShort = 'OpenShort'
   IgnoreConfidence = 'IgnoreConfidence'
+  CloseForProfit = 'CloseForProfit'
+  CloseForLossCut = 'CloseForLossCut'
   Exit = 'Exit'

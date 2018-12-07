@@ -3,7 +3,7 @@ import logging
 
 from Trader import Trader
 from decimal import Decimal
-from classes import Trade, Confidence
+from classes import Trade, Confidence, Position
 
 class TradeExecutor(object):
   def __init__(self, models, accountId, trader=None, logger=None):
@@ -22,7 +22,7 @@ class TradeExecutor(object):
   
   def openPosition(self, lot, traderFun):
     """
-    (self: TradeExecutor, lot: float) -> Trade
+    (self: TradeExecutor, lot: float) -> Trade, Position
     """
     models = self.models
     try:
@@ -30,15 +30,46 @@ class TradeExecutor(object):
       self.logger.debug('Result of opening position is, position={position}.'
                         .format(position=position))
       if position is None:
-        return None
+        return None, None
     except Exception as e:
       self.logger.error(('Unexpected error occured in opening position, e={e}'
                          .format(e=e)))
-      return None
-    trade = Trade(datetime.datetime.now(), position)
-    trade = models.Trades.save(trade, accountId=self.accountId)
-    return trade
+      return None, None
+    now = datetime.datetime.now()
+    trade_ = Trade(now, position)
+    trade = models.Trades.save(trade_, accountId=self.accountId)
+    position_ = Position(now, Position.StatusOpen, [position])
+    position = models.Positions.save(position_)
+    return trade, position
 
+  def closePosition(self, position):
+    """
+    (self: TradeExecutor, position: Position) -> Trade, Position
+    """
+    models = self.models
+    ones = []
+    for p in position.positions:
+      try:
+        one = self.trader.closePosition(p)
+        if one is None:
+          continue
+        ones.append(one)
+      except Exception as e:
+        self.logger.error('Unexpected error occured in closing position, e={e}'
+                          .format(e=e))
+        continue
+    if len(ones) == 0:
+      return None, None
+    now = datetime.datetime.now()
+    trades = []
+    for one in ones:
+      trade_ = Trade(now, one)
+      trade = models.Trades.save(trade_, accountId=self.accountId)
+      trades.append(trade)
+    position.status = Position.StatusClose
+    position = models.Positions.save(position)
+    return trades, position
+  
   def handleOpen(self, confidence, lot, traderFun):
     """
     (self: TradeExecutor, confidence: Confidence, lot: float,
@@ -50,8 +81,8 @@ class TradeExecutor(object):
       self.logger.warning('Skipped opening position as too little lot.')
       return False
     self.logger.warning('Start opening position, lot={lot}.'.format(lot=lot))
-    trade = self.openPosition(lot, traderFun)
-    if trade is None:
+    trade, position = self.openPosition(lot, traderFun)
+    if trade is None or position is None:
       self.logger.error('Failed to open position, lot={lot}.'.format(lot=lot))
       return False
     # Update DB
@@ -60,7 +91,7 @@ class TradeExecutor(object):
     models.Confidences.save(confidence, accountId=self.accountId)
     self.logger.warning('Successfully opened, trade={}'.format(trade))
     return True
-
+  
   def handleOpenLong(self, confidence, lot):
     """
     (self: TradeExecutor, confidence: Confidence, lot: float) -> Trade
@@ -72,7 +103,7 @@ class TradeExecutor(object):
     (self: TradeExecutor, confidence: Confidence, lot: float) -> Trade
     """
     return self.handleOpen(confidence, lot, self.trader.openShortPosition)
-    
+  
   def handleIgnoreConfidence(self, confidence):
     """
     (self: TradeExecutor, confidence: Confidence) -> None
@@ -82,4 +113,21 @@ class TradeExecutor(object):
     confidence.updateStatus(Confidence.StatusIgnored)
     models.Confidences.save(confidence, accountId=self.accountId)
     self.logger.info('Successfully updated, conf={c}'.format(c=confidence))
-
+  
+  def handleClose(self, position):
+    """
+    (self: TraderExecutor, position: Position) -> bool
+    """
+    if not position.isOpen():
+      return False
+    # Closing
+    trade, position = self.closePosition(position)
+    if trade is None or position is None:
+      self.logger.error('Failed to close position, position={p}'
+                        .format(p=position))
+      return False
+    # Update DB
+    models = self.models
+    models.Positions.save(position)
+    self.logger.warning('Successfully closed, trade={t}'.format(t=trade))
+    return True
