@@ -5,7 +5,7 @@ from classes import Confidence
 
 class ConfidenceMonitor(AbstractMonitor):
   def getNewConfidence(self):
-    return self.models.Confidences.oneNew()
+    return self.models.Confidences.oneNew(accountId=self.accountId)
   
   def monitor(self):
     self.logger.debug('Reading new confidence.')
@@ -14,10 +14,10 @@ class ConfidenceMonitor(AbstractMonitor):
 
 
 class PositionMonitor(AbstractMonitor):
-  def getOpenedPosition(self):
-    return self.models.Positions.currentOpen()
+  def getOpenPosition(self):
+    return self.models.Positions.currentOpen(accountId=self.accountId)
   
   def monitor(self):
     self.logger.debug('Reading opening position.')
-    position = self.getOpeningPoistion()
+    position = self.getOpenPosition()
     self.listener.handleEntry(position)
