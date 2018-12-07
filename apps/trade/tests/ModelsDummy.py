@@ -19,7 +19,7 @@ def ModelsDummy():
     def __init__(self):
       self.collection = {}
     
-    def save(self, confidence):
+    def save(self, confidence, accountId):
       self.collection[confidence.date] = confidence
       return confidence
 
@@ -39,7 +39,7 @@ def ModelsDummy():
     def __init__(self):
       self.collection = {}
     
-    def save(self, trade):
+    def save(self, trade, accountId):
       self.collection[trade.date] = trade
       return trade
   
@@ -55,10 +55,13 @@ def ModelsDummy():
     def __init__(self):
       self.values = {}
     
-    def get(self, key):
-      return self.values[key]
+    def get(self, key, accountId):
+      if key in self.values:
+        return self.values[key]
+      else:
+        return None
     
-    def set(self, key, value):
+    def set(self, key, value, accountId):
       self.values[key] = value
   
   return Models()

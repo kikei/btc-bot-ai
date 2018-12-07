@@ -7,48 +7,71 @@ class BudgetManagerDBException(RuntimeError):
   pass
 
 class BudgetManager(object):
-  def __init__(self, models, f=lambda x:0.5*0.8**x, logger=None):
+  def __init__(self, models, accountId, logger=None):
     self.models = models
+    self.accountId = accountId
     if logger is None:
       logger = logging.getLogger()
     self.logger = logger
     self.restore()
-    self.f = f
 
   def restore(self):
     models = self.models
-    step = models.Values.get(Values.AdjusterStep)
+    step = models.Values.get(Values.AdjusterStep, accountId=self.accountId)
     if step is None:
       raise BudgetManagerDBException('Settings "{name}" not initialized.'
                                      .format(name=Values.AdjusterStep))
     self.step = step
     
-    stop = models.Values.get(Values.AdjusterStop)
+    stop = models.Values.get(Values.AdjusterStop, accountId=self.accountId)
     if stop is None:
       raise BudgetManagerDBException('{name} not initialized.'
                                      .format(name=Values.AdjusterStop))
     self.stop = stop
 
-    thresConf = models.Values.get(Values.AdjusterThresConf)
+    thresConf = models.Values.get(Values.AdjusterThresConf,
+                                  accountId=self.accountId)
     if thresConf is None:
       raise BudgetManagerDBException('{name} not initialized.'
                                      .format(name=Values.AdjusterThresConf))
     self.thresConf = thresConf
     
-    speed = models.Values.get(Values.AdjusterSpeed)
+    speed = models.Values.get(Values.AdjusterSpeed, accountId=self.accountId)
     if speed is None:
       speed = 0.0
     self.speed = speed
     
-    lastDirection = models.Values.get(Values.AdjusterLastDirection)
+    lastDirection = models.Values.get(Values.AdjusterLastDirection,
+                                      accountId=self.accountId)
     if lastDirection is None:
       lastDirection = 0.0
     self.lastDirection = lastDirection
-
+    
+    minLot = models.Values.get(Values.AdjusterLotMin,
+                               accountId=self.accountId)
+    if minLot is None:
+      minLot = 0.01
+    self.minLot = minLot
+    
+    initLot = models.Values.get(Values.AdjusterLotInit,
+                                accountId=self.accountId)
+    if initLot is None: initLot = 0.1
+    self.initLot = initLot
+    
+    decayLot = models.Values.get(Values.AdjusterLotDecay,
+                                 accountId=self.accountId)
+    if decayLot is None: decayLot = 0.5
+    self.decayLot = decayLot
+     
   def save(self):
-    self.models.Values.set(Values.AdjusterSpeed, self.speed)
-    self.models.Values.set(Values.AdjusterLastDirection, self.lastDirection)
+    self.models.Values.set(Values.AdjusterSpeed, self.speed,
+                           accountId=self.accountId)
+    self.models.Values.set(Values.AdjusterLastDirection, self.lastDirection,
+                           accountId=self.accountId)
 
+  def lotFunction(self, x):
+    return self.initLot * self.decayLot ** (x - 1.)
+  
   def calc(self, direction):
     speed = self.speed
     if self.lastDirection * direction > 0:
@@ -59,7 +82,8 @@ class BudgetManager(object):
     self.speed = speed
     self.save()
     if abs(speed) < self.stop:
-      return self.f(abs(speed)) * direction
+      lot = self.lotFunction(abs(speed))
+      return max(lot, self.minLot) * direction
     else:
       return 0.0
 
@@ -78,4 +102,5 @@ class BudgetManager(object):
     elif lot < 0.0:
       return Action(PlayerActions.OpenShort, confidence, -lot)
     else:
-      return None
+      return Action(PlayerActions.IgnoreConfidence, confidence)
+

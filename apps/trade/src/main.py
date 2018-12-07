@@ -3,8 +3,10 @@
 import datetime
 import logging
 import os
-import pymongo
 import sys
+sys.path.append('/usr/local/lib/python3.5/site-packages')
+
+import pymongo
 
 CWD = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(CWD, '..', 'conf'))
@@ -41,6 +43,8 @@ def getLogger():
 
 def checkProperties():
   names = []
+  if Properties.ACCOUNT_ID is None:
+    names.append('ACCOUNT_ID')
   if Properties.BITFLYER_USER_SECRET is None:
     names.append('BITFLYER_USER_SECRET')
   elif Properties.BITFLYER_ACCESS_KEY is None:
@@ -52,14 +56,14 @@ def checkProperties():
   return True
 
 
-class ConfidenceListener(AbstractListener):
-  def __init__(self, models, Player=None, logger=None):
+class ConfidenceListener(object):
+  def __init__(self, models, accountId, Player=None, logger=None):
     if logger is None:
       logger = logging.getLogger()
     self.logger = logger
     if Player is None:
       Player = TradingPlayer
-    self.player = Player(models, logger=logger)
+    self.player = Player(models, accountId=accountId, logger=logger)
   
   def handleEntry(self, confidence):
     expirePredict = datetime.timedelta(hours=1)
@@ -74,11 +78,11 @@ class ConfidenceListener(AbstractListener):
       self.logger.debug('No new confidence.')
 
 class PositionListener(AbstractListener):
-  def __init__(self, models, Player, logger=None):
+  def __init__(self, models, accountId, Player, logger=None):
     if logger is None:
       logger = logging.getLogger()
     self.logger = logger
-    self.player = Player(models, logger=logger)
+    self.player = Player(models, accountId=accountId, logger=logger)
   
   def handleEntry(self, positions):
     if len(positions) > 0:
@@ -95,9 +99,10 @@ def createPositionsPlayer(models, logger=None):
                         logger=logger)
 
 def runStep(logger=None):
+  accountId = Properties.ACCOUNT_ID
   models = getModels(getDBInstance())
-  confidenceListener = ConfidenceListener(models, logger=logger)
-  confidenceMonitor = ConfidenceMonitor(models, loop=False, logger=logger)
+  confidenceListener = ConfidenceListener(models, accountId=accountId, logger=logger)
+  confidenceMonitor = ConfidenceMonitor(models, accountId=accountId, loop=False, logger=logger)
   confidenceMonitor.setListener(confidenceListener)
   
   positionListener = PositionListener(models, Player=createPositionPlayer,

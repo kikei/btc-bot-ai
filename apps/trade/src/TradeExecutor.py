@@ -6,8 +6,9 @@ from decimal import Decimal
 from classes import Trade, Confidence, Position
 
 class TradeExecutor(object):
-  def __init__(self, models, trader=None, logger=None):
+  def __init__(self, models, accountId, trader=None, logger=None):
     self.models = models
+    self.accountId = accountId
     if trader is None:
       trader = Trader(logger=logger)
     self.trader = trader
@@ -36,7 +37,7 @@ class TradeExecutor(object):
       return None, None
     now = datetime.datetime.now()
     trade_ = Trade(now, position)
-    trade = models.Trades.save(trade_)
+    trade = models.Trades.save(trade_, accountId=self.accountId)
     position_ = Position(now, Position.StatusOpen, [position])
     position = models.Positions.save(position_)
     return trade, position
@@ -63,7 +64,7 @@ class TradeExecutor(object):
     trades = []
     for one in ones:
       trade_ = Trade(now, one)
-      trade = models.Trades.save(trade_)
+      trade = models.Trades.save(trade_, accountId=self.accountId)
       trades.append(trade)
     position.status = Position.StatusClose
     position = models.Positions.save(position)
@@ -87,7 +88,7 @@ class TradeExecutor(object):
     # Update DB
     models = self.models
     confidence.updateStatus(Confidence.StatusUsed)
-    models.Confidences.save(confidence)
+    models.Confidences.save(confidence, accountId=self.accountId)
     self.logger.warning('Successfully opened, trade={}'.format(trade))
     return True
   
@@ -102,6 +103,16 @@ class TradeExecutor(object):
     (self: TradeExecutor, confidence: Confidence, lot: float) -> Trade
     """
     return self.handleOpen(confidence, lot, self.trader.openShortPosition)
+  
+  def handleIgnoreConfidence(self, confidence):
+    """
+    (self: TradeExecutor, confidence: Confidence) -> None
+    """
+    self.logger.info('Updating to ignored, conf={c}'.format(c=confidence))
+    models = self.models
+    confidence.updateStatus(Confidence.StatusIgnored)
+    models.Confidences.save(confidence, accountId=self.accountId)
+    self.logger.info('Successfully updated, conf={c}'.format(c=confidence))
   
   def handleClose(self, position):
     """

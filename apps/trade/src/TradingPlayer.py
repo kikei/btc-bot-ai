@@ -10,9 +10,10 @@ class TradingPlayer(object):
   """
   Connect actions creator and executor.
   """
-  def __init__(self, models, ActionCreator=None, ActionExecutor=None,
+  def __init__(self, models, accountId, ActionCreator=None, ActionExecutor=None,
                logger=None):
     self.models = models
+    self.accountId = accountId
     if ActionCreator is None:
       ActionCreator = BudgetManager
     if ActionExecutor is None:
@@ -21,14 +22,15 @@ class TradingPlayer(object):
       logger = logging.getLogger()
     self.logger = logger
     
-    executor = ActionExecutor(models, logger=logger)
-    self.actionCreator = ActionCreator(models, logger=logger)
+    executor = ActionExecutor(models, accountId=accountId, logger=logger)
+    self.actionCreator = ActionCreator(models, accountId=accountId, logger=logger)
     self.actionExecutor = executor
     
     dispatcher = ActionsDispatcher()
     dispatcher.adds({
       PlayerActions.OpenLong: executor.handleOpenLong,
       PlayerActions.OpenShort: executor.handleOpenShort,
+      PlayerActions.IgnoreConfidence: executor.handleIgnoreConfidence,
       PlayerActions.ClosePosition: executor.handleClose,
       PlayerActions.Exit: lambda: FinishMonitoring.raiseEvent('Exit')
     })
@@ -36,6 +38,6 @@ class TradingPlayer(object):
 
   def run(self):
     models = self.models
-    confidence = models.Confidences.oneNew()
+    confidence = models.Confidences.oneNew(accountId=self.accountId)
     action = self.actionCreator.createAction(confidence)
     processed = self.dispatcher.dispatch(action)

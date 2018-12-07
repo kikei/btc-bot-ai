@@ -7,9 +7,13 @@ sys.path.append(os.path.join(CWD, '..', 'src'))
 
 from main import *
 from classes import *
-from Models import *
+from ModelsDummy import *
 from TradeExecutor import *
 from market.BitFlyer import BitFlyerAPIError
+
+@pytest.fixture
+def accountId():
+  return 'test'
 
 @pytest.fixture
 def models():
@@ -24,54 +28,24 @@ class DummyTrader(object):
 
 @pytest.fixture
 def modelsDummy():
-  class Models(object):
-    def __init__(self):
-      self.Confidences = ConfidencesDummy()
-      self.Trades = TradesDummy()
-      self.Positions = PositionsDummy()
-  
-  class ConfidencesDummy(object):
-    def __init__(self):
-      self.collection = {}
-    
-    def save(self, confidence):
-      self.collection[confidence.date] = confidence
-      return confidence
+  return ModelsDummy()
 
-  class TradesDummy(object):
-    def __init__(self):
-      self.collection = {}
-
-    def save(self, trade):
-      self.collection[trade.date] = trade
-      return trade
-  
-  class PositionsDummy(object):
-    def __init__(self):
-      self.collection = {}
-
-    def save(self, position):
-      self.collection[position.date] = position
-      return position
-  
-  return Models()
-
-def test_init(modelsDummy):
+def test_init(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models)
+  executor = TradeExecutor(models, accountId=accountId)
   assert executor.models is not None
   assert executor.trader is not None
   assert executor.logger is not None
   assert executor.minPrecision is not None
 
-def test_roundLot(modelsDummy):
+def test_roundLot(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models)
+  executor = TradeExecutor(models, accountId=accountId)
   assert executor.roundLot(1.2354321) == 1.24
 
-def test_openPosition(modelsDummy):
+def test_openPosition(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models)
+  executor = TradeExecutor(models, accountId=accountId)
   exchanger = 'test'
   lot = 1.0
   one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
@@ -88,9 +62,9 @@ def test_openPosition(modelsDummy):
   assert len(position.positions) == 1
   assert models.Positions.collection[position.date] == position
 
-def test_handleOpen_ok(modelsDummy):
+def test_handleOpen_ok(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models)
+  executor = TradeExecutor(models, accountId=accountId)
   exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
@@ -101,15 +75,15 @@ def test_handleOpen_ok(modelsDummy):
     return position
   confidence = Confidence(datetime.datetime.now(),
                           longConf, shortConf, Confidence.StatusNew)
-  models.Confidences.save(confidence)
+  models.Confidences.save(confidence, accountId=accountId)
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is True
   assert confidence.isStatusOf(Confidence.StatusUsed)
   assert models.Confidences.collection[confidence.date] == confidence
 
-def test_handleOpen_lot0(modelsDummy):
+def test_handleOpen_lot0(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models)
+  executor = TradeExecutor(models, accountId=accountId)
   exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
@@ -119,15 +93,15 @@ def test_handleOpen_lot0(modelsDummy):
     assert False
   confidence = Confidence(datetime.datetime.now(),
                           longConf, shortConf, Confidence.StatusNew)
-  models.Confidences.save(confidence)
+  models.Confidences.save(confidence, accountId=accountId)
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is False
   assert confidence.isStatusOf(Confidence.StatusNew)
   assert models.Confidences.collection[confidence.date] == confidence
 
-def test_handleOpen_tradeNG(modelsDummy):
+def test_handleOpen_tradeNG(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models)
+  executor = TradeExecutor(models, accountId=accountId)
   exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
@@ -138,15 +112,15 @@ def test_handleOpen_tradeNG(modelsDummy):
     return None
   confidence = Confidence(datetime.datetime.now(),
                           longConf, shortConf, Confidence.StatusNew)
-  models.Confidences.save(confidence)
+  models.Confidences.save(confidence, accountId=accountId)
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is False
   assert confidence.isStatusOf(Confidence.StatusNew)
   assert models.Confidences.collection[confidence.date] == confidence
 
-def test_handleOpen_tradeError(modelsDummy):
+def test_handleOpen_tradeError(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models)
+  executor = TradeExecutor(models, accountId=accountId)
   exchanger = 'test'
   longConf = 0.9
   shortConf = 0.1
@@ -156,15 +130,15 @@ def test_handleOpen_tradeError(modelsDummy):
     raise BitFlyerAPIError('error')
   confidence = Confidence(datetime.datetime.now(),
                           longConf, shortConf, Confidence.StatusNew)
-  models.Confidences.save(confidence)
+  models.Confidences.save(confidence, accountId=accountId)
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is False
   assert confidence.isStatusOf(Confidence.StatusNew)
   assert models.Confidences.collection[confidence.date] == confidence
 
-def test_closePosition(modelsDummy):
+def test_closePosition(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models, trader=DummyTrader())
+  executor = TradeExecutor(models, trader=DummyTrader(), accountId=accountId)
   exchanger = 'test'
   lot = 1.0
   one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
@@ -182,9 +156,9 @@ def test_closePosition(modelsDummy):
   assert len(position.positions) == 1
   assert models.Positions.collection[position.date] == position
 
-def test_handleClose_ok(modelsDummy):
+def test_handleClose_ok(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models, trader=DummyTrader())
+  executor = TradeExecutor(models, trader=DummyTrader(), accountId=accountId)
   exchanger = 'test'
   date = datetime.datetime.now()
   one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)
@@ -197,9 +171,9 @@ def test_handleClose_ok(modelsDummy):
   assert saved.status == Position.StatusClose
   assert len(saved.positions) == 1
 
-def test_handleClose_closed(modelsDummy):
+def test_handleClose_closed(modelsDummy, accountId):
   models = modelsDummy
-  executor = TradeExecutor(models, trader=DummyTrader())
+  executor = TradeExecutor(models, trader=DummyTrader(), accountId=accountId)
   exchanger = 'test'
   date = datetime.datetime.now()
   one = OnePosition(exchanger, [1.0], [1.0], OnePosition.SideLong)

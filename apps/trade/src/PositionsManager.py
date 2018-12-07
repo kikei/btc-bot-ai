@@ -7,8 +7,9 @@ class PositionsManagerDBException(RuntimeError):
   pass
 
 class PositionsManager(object):
-  def __init__(self, models, logger=None):
+  def __init__(self, models, accountId, logger=None):
     self.models = models
+    self.accountId = accountId
     if logger is None:
       logger = logging.getLogger()
     self.logger = logger
@@ -16,13 +17,15 @@ class PositionsManager(object):
   
   def restore(self):
     models = self.models
-    profitThres = models.Values.get(Values.PositionThresProfit)
+    profitThres = models.Values.get(Values.PositionThresProfit,
+                                    accountId=self.accountId)
     if profitThres is None:
       raise PositionsManagerDBException('Settings "{k}" not initialized.'
                                         .format(k=Values.PositionThresProfit))
     self.profitThres = profitThres
     
-    lossCutThres = models.Values.get(Values.PositionThresLossCut)
+    lossCutThres = models.Values.get(Values.PositionThresLossCut,
+                                     accountId=self.accountId)
     if lossCutThres is None:
       raise PositionsManagerDBException('Settings "{k}" not initialized.'
                                         .format(k=Values.PositionThresLossCut))
