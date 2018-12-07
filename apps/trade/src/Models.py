@@ -2,7 +2,7 @@ import itertools
 import datetime
 import pymongo
 
-from classes import Tick, OneTick, OnePosition, Confidence, Trade, datetimeToStr
+from classes import Tick, OneTick, OnePosition, Confidence, Trade, Position, datetimeToStr
 
 class Models(object):
     def __init__(self, dbs):
@@ -321,12 +321,17 @@ class Positions(object):
     self.collection.create_index([('account_id', pymongo.TEXT),
                                   ('timestamp', pymongo.DESCENDING)])
   
-  def all(self, accountId):
+  def all(self, accountId, before=None, count=None):
     """
-    (self: Positions) -> [Position]
+    (self: Positions, accountId: str, before: float?, count: int?) -> [Position]
     """
-    condition = {'account_id': accountId}
-    positions = self.collection.find(condition).sort('timestamp', -1)
+    conditions = [{'account_id': accountId}]
+    if before is not None:
+      conditions.append({'timestamp': {'$lt': before}})
+    conditions = {'$and': conditions}
+    positions = self.collection.find(conditions).sort('timestamp', -1)
+    if count is not None:
+      positions = positions.limit(count)
     positions = [Position.fromDict(p) for p in positions]
     return positions
 
