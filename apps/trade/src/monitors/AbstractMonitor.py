@@ -10,7 +10,8 @@ class PassListener(AbstractListener):
 
 class AbstractMonitor(ABC):
   
-  def __init__(self, models, loop=True, monitorInterval=3, logger=None):
+  def __init__(self, models, accountId, loop=True, monitorInterval=3, logger=None):
+    self.accountId = accountId
     if logger is None:
       logger = logging.getLogger()
     self.models = models
@@ -24,7 +25,7 @@ class AbstractMonitor(ABC):
     return self
   
   def getEnabled(self):
-    return self.models.Values.get(Values.Enabled)
+    return self.models.Values.get(Values.Enabled, accountId=self.accountId)
   
   def start(self):
     models = self.models

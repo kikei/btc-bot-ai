@@ -21,6 +21,7 @@ from Models import Models
 from TradingPlayer import TradingPlayer
 from PositionsPlayer import PositionsPlayer
 from PositionsManager import PositionsManager
+from TradeExecutor import TradeExecutor
 
 def getDBInstance(host=None, port=None):
   if host is None:
@@ -92,11 +93,12 @@ class PositionListener(AbstractListener):
     else:
       self.logger.debug('No opening position.')
 
-def createPositionsPlayer(models, logger=None):
-  return PositionPlayer(models,
-                        ActionCreator=PositionsManager,
-                        ActionExecutor=TradeExecutor,
-                        logger=logger)
+def createPositionsPlayer(models, accountId, logger=None):
+  return PositionsPlayer(models,
+		         ActionCreator=PositionsManager,
+                         ActionExecutor=TradeExecutor,
+                         accountId=accountId,
+                         logger=logger)
 
 def runStep(logger=None):
   accountId = Properties.ACCOUNT_ID
@@ -105,9 +107,11 @@ def runStep(logger=None):
   confidenceMonitor = ConfidenceMonitor(models, accountId=accountId, loop=False, logger=logger)
   confidenceMonitor.setListener(confidenceListener)
   
-  positionListener = PositionListener(models, Player=createPositionPlayer,
+  positionListener = PositionListener(models, Player=createPositionsPlayer,
+                                      accountId=accountId,
                                       logger=logger)
-  positionMonitor = PositionMonitor(models, loop=False, logger=logger)
+  positionMonitor = PositionMonitor(models, accountId=accountId,
+                                    loop=False, logger=logger)
   positionMonitor.setListener(positionListener)
   
   confidenceMonitor.start()
