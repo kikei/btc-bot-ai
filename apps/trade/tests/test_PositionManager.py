@@ -30,7 +30,7 @@ def test_init(modelsDummy, accountId):
 
 def test_calcVariation():
   now = datetime.datetime.now()
-  exchanger = 'test'
+  exchanger = Tick.BitFlyer
   price = 500000
   ask = 510000
   bid = 500900
@@ -50,7 +50,7 @@ def test_createAction_longProfit(modelsDummy, accountId):
   models = modelsDummy
   manager = PositionsManager(models, accountId=accountId)
   now = datetime.datetime.now()
-  exchanger = 'test'
+  exchanger = Tick.BitFlyer
   tick = OneTick(ask=500000,
                  bid=500000 * models.Values.get(Values.PositionThresProfit,
                                                 accountId=accountId))
@@ -74,7 +74,7 @@ def test_createAction_longLossCut(modelsDummy):
   models = modelsDummy
   manager = PositionsManager(models)
   now = datetime.datetime.now()
-  exchanger = 'test'
+  exchanger = Tick.BitFlyer
   tick = OneTick(ask=500000,
                  bid=500000 * models.Values.get(Values.PositionThresLossCut))
   models.Ticks.save(Tick({exchanger: tick}))
@@ -97,7 +97,7 @@ def test_createAction_shortProfit(modelsDummy, accountId):
   models = modelsDummy
   manager = PositionsManager(models, accountId=accountId)
   now = datetime.datetime.now()
-  exchanger = 'test'
+  exchanger = Tick.BitFlyer
   tick = OneTick(ask=500000 / models.Values.get(Values.PositionThresProfit,
                                                 accountId=accountId),
                  bid=500000)
@@ -121,7 +121,7 @@ def test_createAction_longLossCut(modelsDummy, accountId):
   models = modelsDummy
   manager = PositionsManager(models, accountId=accountId)
   now = datetime.datetime.now()
-  exchanger = 'test'
+  exchanger = Tick.BitFlyer
   thres = models.Values.get(Values.PositionThresLossCut, accountId=accountId)
   tick = OneTick(ask=1. + 500000 / thres, bid=500000)
   models.Ticks.save(Tick({exchanger: tick}))

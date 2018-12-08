@@ -20,7 +20,7 @@ def ModelsDummy():
       self.collection = {}
     
     def save(self, confidence, accountId):
-      self.collection[confidence.date] = confidence
+      self.collection[confidence.date] = confidence.toDict()
       return confidence
 
   class TicksDummy(object):
@@ -29,18 +29,27 @@ def ModelsDummy():
 
     def one(self):
       k = sorted(self.collection.keys())[0]
-      return self.collection[k]
+      obj = {}
+      for e, t in self.collection[k].items():
+        obj[e] = OneTick.fromDict(t)
+      return Tick(obj)
 
     def save(self, tick):
       k = list(tick.ticks.items())[0][1].date.timestamp()
-      self.collection[k] = tick
+      tick = tick.toDict()
+      d = {}
+      for e, t in tick.items():
+        date = datetime.datetime.fromtimestamp(t['datetime'])
+        t['datetime'] = datetimeToStr(date)
+        d[e] = t
+      self.collection[k] = d
   
   class TradesDummy(object):
     def __init__(self):
       self.collection = {}
     
     def save(self, trade, accountId):
-      self.collection[trade.date] = trade
+      self.collection[trade.date] = trade.toDict()
       return trade
   
   class PositionsDummy(object):
@@ -48,7 +57,7 @@ def ModelsDummy():
       self.collection = {}
     
     def save(self, position):
-      self.collection[position.date] = position
+      self.collection[position.date] = position.toDict()
       return position
   
   class ValuesDummy(object):

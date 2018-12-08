@@ -55,13 +55,13 @@ def test_openPosition(modelsDummy, accountId):
   trade, position = executor.openPosition(lot, traderFun)
   assert isinstance(trade, Trade)
   assert str(trade.position) == str(one)
-  assert models.Trades.collection[trade.date] == trade
+  assert str(Trade.fromDict(models.Trades.collection[trade.date])) == str(trade)
   assert isinstance(position, Position)
   assert isinstance(position.date, datetime.datetime)
   assert position.status == Position.StatusOpen
   assert len(position.positions) == 1
   assert position.closed is None
-  assert models.Positions.collection[position.date] == position
+  assert str(Position.fromDict(models.Positions.collection[position.date])) == str(position)
 
 def test_handleOpen_ok(modelsDummy, accountId):
   models = modelsDummy
@@ -80,7 +80,8 @@ def test_handleOpen_ok(modelsDummy, accountId):
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is True
   assert confidence.isStatusOf(Confidence.StatusUsed)
-  assert models.Confidences.collection[confidence.date] == confidence
+  conf = Confidence.fromDict(models.Confidences.collection[confidence.date])
+  assert str(conf) == str(confidence)
 
 def test_handleOpen_lot0(modelsDummy, accountId):
   models = modelsDummy
@@ -98,7 +99,8 @@ def test_handleOpen_lot0(modelsDummy, accountId):
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is False
   assert confidence.isStatusOf(Confidence.StatusNew)
-  assert models.Confidences.collection[confidence.date] == confidence
+  conf = Confidence.fromDict(models.Confidences.collection[confidence.date])
+  assert str(conf) == str(confidence)
 
 def test_handleOpen_tradeNG(modelsDummy, accountId):
   models = modelsDummy
@@ -117,7 +119,8 @@ def test_handleOpen_tradeNG(modelsDummy, accountId):
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is False
   assert confidence.isStatusOf(Confidence.StatusNew)
-  assert models.Confidences.collection[confidence.date] == confidence
+  conf = Confidence.fromDict(models.Confidences.collection[confidence.date])
+  assert str(conf) == str(confidence)
 
 def test_handleOpen_tradeError(modelsDummy, accountId):
   models = modelsDummy
@@ -135,7 +138,8 @@ def test_handleOpen_tradeError(modelsDummy, accountId):
   result = executor.handleOpen(confidence, lot, traderFun)
   assert result is False
   assert confidence.isStatusOf(Confidence.StatusNew)
-  assert models.Confidences.collection[confidence.date] == confidence
+  conf = Confidence.fromDict(models.Confidences.collection[confidence.date])
+  assert str(conf) == str(confidence)
 
 def test_closePosition(modelsDummy, accountId):
   models = modelsDummy
@@ -150,14 +154,16 @@ def test_closePosition(modelsDummy, accountId):
   assert isinstance(trades[0], Trade)
   assert isinstance(trades[0].date, datetime.datetime)
   assert trades[0].position.sizeWhole() == one.sizeWhole()
-  assert models.Trades.collection[trades[0].date] == trades[0]
+  trade = Trade.fromDict(models.Trades.collection[trades[0].date])
+  assert str(trade) == str(trades[0])
   assert isinstance(position, Position)
   assert isinstance(position.date, datetime.datetime)
   assert position.status == Position.StatusClose
   assert len(position.positions) == 1
   assert len(position.closed) == len(position.positions)
   assert all(isinstance(p, OnePosition) for p in position.closed)
-  assert models.Positions.collection[position.date] == position
+  pos = Position.fromDict(models.Positions.collection[position.date])
+  assert str(pos) == str(position)
 
 def test_handleClose_ok(modelsDummy, accountId):
   models = modelsDummy
@@ -168,7 +174,7 @@ def test_handleClose_ok(modelsDummy, accountId):
   position = Position(date, Position.StatusOpen, [one])
   result = executor.handleClose(position)
   assert result
-  saved = models.Positions.collection.popitem()[1]
+  saved = Position.fromDict(models.Positions.collection.popitem()[1])
   assert isinstance(saved, Position)
   assert isinstance(saved.date, datetime.datetime)
   assert saved.status == Position.StatusClose

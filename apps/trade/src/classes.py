@@ -258,7 +258,10 @@ class Tick(object):
     return [Tick.BitFlyer, Tick.Quoine]
 
   def toDict(self):
-    d = {e: self.exchanger(e).toDict() for e in self.exchangers()}
+    d = {}
+    for e in self.exchangers():
+      if self.exchanger(e) is not None:
+        d[e] = self.exchanger(e).toDict()
     return d
 
   def __str__(self):
