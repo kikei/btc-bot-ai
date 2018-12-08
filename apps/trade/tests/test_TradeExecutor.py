@@ -60,6 +60,7 @@ def test_openPosition(modelsDummy, accountId):
   assert isinstance(position.date, datetime.datetime)
   assert position.status == Position.StatusOpen
   assert len(position.positions) == 1
+  assert position.closed is None
   assert models.Positions.collection[position.date] == position
 
 def test_handleOpen_ok(modelsDummy, accountId):
@@ -154,6 +155,8 @@ def test_closePosition(modelsDummy, accountId):
   assert isinstance(position.date, datetime.datetime)
   assert position.status == Position.StatusClose
   assert len(position.positions) == 1
+  assert len(position.closed) == len(position.positions)
+  assert all(isinstance(p, OnePosition) for p in position.closed)
   assert models.Positions.collection[position.date] == position
 
 def test_handleClose_ok(modelsDummy, accountId):

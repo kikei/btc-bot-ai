@@ -62,11 +62,16 @@ class TradeExecutor(object):
       return None, None
     now = datetime.datetime.now()
     trades = []
+    # Update trades model.
     for one in ones:
       trade_ = Trade(now, one)
       trade = models.Trades.save(trade_, accountId=self.accountId)
       trades.append(trade)
-    position.status = Position.StatusClose
+    # Update position model.
+    # Note: It will be marked as closed,
+    # if at least one position is successfully closed.
+    position.setStatus(Position.StatusClose)
+    position.setClosed(ones)
     position = models.Positions.save(position)
     return trades, position
   
@@ -127,7 +132,5 @@ class TradeExecutor(object):
                         .format(p=position))
       return False
     # Update DB
-    models = self.models
-    models.Positions.save(position)
     self.logger.warning('Successfully closed, trade={t}'.format(t=trade))
     return True
