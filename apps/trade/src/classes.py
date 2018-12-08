@@ -76,14 +76,16 @@ class Position(object):
   StatusOpening = 'opening'
   StatusClosing = 'closing'
 
-  def __init__(self, date, status, positions):
+  def __init__(self, date, status, positions, closed=None):
     """
-    (self: Position, date: datetime, status: str, positions: [OnePosition])
+    (self: Position, date: datetime, status: str,
+     positions: [OnePosition], closed: [OnePosition])
     -> Position
     """
     self.date = date
     self.status = status
     self.positions = positions
+    self.closed = closed
   
   @staticmethod
   def fromDict(obj):
@@ -92,21 +94,35 @@ class Position(object):
     date = datetime.datetime.fromtimestamp(obj['timestamp'])
     status = obj['status']
     positions = [OnePosition.fromDict(p) for p in obj['positions']]
-    return Position(date, status, positions)
+    if obj['closed'] is None:
+      closed = None
+    else:
+      closed = [OnePosition.fromDict(p) for p in obj['closed']]
+    return Position(date, status, positions, closed)
   
   def toDict(self):
+    if self.closed is None:
+      closed = None
+    else:
+      closed = [p.toDict() for p in self.closed]
     obj = {
       'timestamp': self.date.timestamp(),
       'status': self.status,
-      'positions': [p.toDict() for p in self.positions]
+      'positions': [p.toDict() for p in self.positions],
+      'closed': closed
     }
     return obj
   
   def __str__(self):
     positions = ', '.join(str(p) for p in self.positions)
-    text = ('Position(date={date}, status={status}, positions=[{positions}]'
+    if self.closed is None:
+      closed = None
+    else:
+      closed = ', '.join(str(p) for p in self.closed)
+    text = (('Position(date={date}, status={status}, ' +
+             'positions=[{positions}], closed=[{closed}])')
             .format(date=datetimeToStr(self.date), status=self.status,
-                    positions=positions))
+                    positions=positions, closed=closed))
     return text
   
   def isNotClosed(self):
@@ -114,6 +130,12 @@ class Position(object):
   
   def isOpen(self):
     return self.status in [Position.StatusOpen]
+  
+  def setClosed(self, closed):
+    self.closed = closed
+  
+  def setStatus(self, status):
+    self.status = status
 
 class Confidence(object):
   StatusNew = 'new'
@@ -236,7 +258,10 @@ class Tick(object):
     return [Tick.BitFlyer, Tick.Quoine]
 
   def toDict(self):
-    d = {e: self.exchanger(e).toDict() for e in self.exchangers()}
+    d = {}
+    for e in self.exchangers():
+      if self.exchanger(e) is not None:
+        d[e] = self.exchanger(e).toDict()
     return d
 
   def __str__(self):

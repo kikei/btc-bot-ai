@@ -16,8 +16,8 @@ class Trader(object):
     """
     position = self.openBitflyer(MarketConst.LONG, None, lot)
     if position is None:
-      self.logger.error('Failed to open position, side={side}, lot={lot}.'
-                        .format(side=side, lot=lot))
+      self.logger.error('Failed to open long position for bitflyer, lot={lot}.'
+                        .format(lot=lot))
       return None
     return position
 
@@ -27,8 +27,8 @@ class Trader(object):
     """
     position = self.openBitflyer(MarketConst.SHORT, None, lot)
     if position is None:
-      self.logger.error('Failed to open position, side={side}, lot={lot}.'
-                        .format(side=side, lot=lot))
+      self.logger.error('Failed to open position for bitflyer, lot={lot}.'
+                        .format(lot=lot))
       return None
     return position
 
