@@ -37,9 +37,11 @@ class TradeExecutor(object):
       return None, None
     now = datetime.datetime.now()
     trade_ = Trade(now, position)
+    self.logger.debug('Saving new trade, {t}.'.format(t=trade_))
     trade = models.Trades.save(trade_, accountId=self.accountId)
     position_ = Position(now, Position.StatusOpen, [position])
-    position = models.Positions.save(position_)
+    self.logger.debug('Saving new position, {p}.'.format(p=position_))
+    position = models.Positions.save(position_, accountId=self.accountId)
     return trade, position
 
   def closePosition(self, position):
@@ -72,7 +74,7 @@ class TradeExecutor(object):
     # if at least one position is successfully closed.
     position.setStatus(Position.StatusClose)
     position.setClosed(ones)
-    position = models.Positions.save(position)
+    position = models.Positions.save(position, accountId=self.accountId)
     return trades, position
   
   def handleOpen(self, confidence, lot, traderFun):
