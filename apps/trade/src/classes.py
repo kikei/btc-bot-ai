@@ -94,7 +94,7 @@ class Position(object):
     date = datetime.datetime.fromtimestamp(obj['timestamp'])
     status = obj['status']
     positions = [OnePosition.fromDict(p) for p in obj['positions']]
-    if obj['closed'] is None:
+    if 'closed' not in obj or obj['closed'] is None:
       closed = None
     else:
       closed = [OnePosition.fromDict(p) for p in obj['closed']]
