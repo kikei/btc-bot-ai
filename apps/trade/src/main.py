@@ -87,8 +87,8 @@ class PositionListener(AbstractListener):
   
   def handleEntry(self, positions):
     if len(positions) > 0:
-      self.logger.info('Open positions exists, positions={positions}.'
-                       .format(positions=positions))
+      self.logger.info('Open positions exists, #p={n}.'
+                       .format(n=len(positions)))
       self.player.run()
     else:
       self.logger.debug('No opening position.')

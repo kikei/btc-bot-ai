@@ -61,6 +61,7 @@ class TradeExecutor(object):
                           .format(e=e))
         continue
     if len(ones) == 0:
+      self.logger.error('No position successfully closed.')
       return None, None
     now = datetime.datetime.now()
     trades = []
@@ -130,8 +131,8 @@ class TradeExecutor(object):
     # Closing
     trade, position = self.closePosition(position)
     if trade is None or position is None:
-      self.logger.error('Failed to close position, position={p}'
-                        .format(p=position))
+      self.logger.error('Failed to close position, trade={t}, position={p}'
+                        .format(t=str(trade), p=position))
       return False
     # Update DB
     self.logger.warning('Successfully closed, trade={t}'.format(t=trade))
