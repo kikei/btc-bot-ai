@@ -31,7 +31,7 @@ class PositionsPlayer(object):
     self.dispatcher = dispatcher
   
   def run(self):
-    modles = self.models
+    models = self.models
     positions = models.Positions.currentOpen(accountId=self.accountId)
     action = self.actionCreator.createAction(positions)
     processed = self.dispatcher.dispatch(action)
