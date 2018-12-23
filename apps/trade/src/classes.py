@@ -73,6 +73,7 @@ class OnePosition(object):
 class Position(object):
   StatusOpen = 'open'
   StatusClose = 'close'
+  StatusIgnored = 'ignored'
   StatusOpening = 'opening'
   StatusClosing = 'closing'
 
