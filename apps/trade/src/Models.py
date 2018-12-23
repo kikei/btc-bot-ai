@@ -323,6 +323,19 @@ class Positions(object):
     self.collection.create_index([('account_id', pymongo.DESCENDING),
                                   ('status', pymongo.DESCENDING)])
   
+  def one(self, accountId, timestamp=None):
+    """
+    (self: Positions, accountId: float?) -> Position
+    """
+    conditions = [{'account_id': accountId}]
+    if timestamp is not None:
+      conditions.append({'timestamp': timestamp})
+    conditions = {'$and': conditions}
+    position = self.collection.find_one(conditions)
+    if position is not None:
+      position = Position.fromDict(position)
+    return position
+  
   def all(self, accountId, before=None, count=None):
     """
     (self: Positions, accountId: str, before: float?, count: int?) -> [Position]
