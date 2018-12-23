@@ -307,7 +307,7 @@ class Trades(object):
       {'timestamp': obj['timestamp']}
     ]}
     result = self.collection.replace_one(condition, obj, upsert=True)
-    if result.upserted_id is None:
+    if result.upserted_id is None and result.matched_count == 0:
       return None
     else:
       return trade
@@ -320,6 +320,8 @@ class Positions(object):
   def setup(self):
     self.collection.create_index([('account_id', pymongo.TEXT),
                                   ('timestamp', pymongo.DESCENDING)])
+    self.collection.create_index([('account_id', pymongo.DESCENDING),
+                                  ('status', pymongo.DESCENDING)])
   
   def one(self, accountId, timestamp=None):
     """
@@ -361,10 +363,12 @@ class Positions(object):
     """
     (self: Positions) -> [Position]
     """
-    condition = {'account_id': accountId}
+    condition = {'$and': [{'account_id': accountId},
+                          {'status': 'open'}]}
     positions = self.collection.find(condition).sort('timestamp', -1)
-    positions = (Position.fromDict(p) for p in positions)
-    return Positions.filterOpen(positions)
+    positions = [Position.fromDict(p) for p in positions]
+    #return Positions.filterOpen(positions)
+    return positions
   
   def save(self, position, accountId):
     """
@@ -377,7 +381,7 @@ class Positions(object):
       {'timestamp': obj['timestamp']}
     ]}
     result = self.collection.replace_one(condition, obj, upsert=True)
-    if result.upserted_id is None:
+    if result.upserted_id is None and result.matched_count == 0:
       return None
     else:
       return position

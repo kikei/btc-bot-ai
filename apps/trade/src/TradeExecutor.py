@@ -37,9 +37,11 @@ class TradeExecutor(object):
       return None, None
     now = datetime.datetime.now()
     trade_ = Trade(now, position)
+    self.logger.debug('Saving new trade, {t}.'.format(t=trade_))
     trade = models.Trades.save(trade_, accountId=self.accountId)
     position_ = Position(now, Position.StatusOpen, [position])
-    position = models.Positions.save(position_)
+    self.logger.debug('Saving new position, {p}.'.format(p=position_))
+    position = models.Positions.save(position_, accountId=self.accountId)
     return trade, position
 
   def closePosition(self, position):
@@ -59,6 +61,7 @@ class TradeExecutor(object):
                           .format(e=e))
         continue
     if len(ones) == 0:
+      self.logger.error('No position successfully closed.')
       return None, None
     now = datetime.datetime.now()
     trades = []
@@ -72,7 +75,7 @@ class TradeExecutor(object):
     # if at least one position is successfully closed.
     position.setStatus(Position.StatusClose)
     position.setClosed(ones)
-    position = models.Positions.save(position)
+    position = models.Positions.save(position, accountId=self.accountId)
     return trades, position
   
   def handleOpen(self, confidence, lot, traderFun):
@@ -128,8 +131,8 @@ class TradeExecutor(object):
     # Closing
     trade, position = self.closePosition(position)
     if trade is None or position is None:
-      self.logger.error('Failed to close position, position={p}'
-                        .format(p=position))
+      self.logger.error('Failed to close position, trade={t}, position={p}'
+                        .format(t=str(trade), p=position))
       return False
     # Update DB
     self.logger.warning('Successfully closed, trade={t}'.format(t=trade))

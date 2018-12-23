@@ -2,3 +2,4 @@ PyJWT
 pymongo
 pytest
 python-dateutil
+requests
