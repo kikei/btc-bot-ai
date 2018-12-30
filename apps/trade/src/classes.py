@@ -218,12 +218,23 @@ class OneTick(object):
 
   def spread(self):
     return self.ask - self.bid
-
+  
+  @staticmethod
+  def importDate(date):
+    if isinstance(date, datetime.datetime):
+      return date
+    elif isinstance(date, float):
+      return datetime.datetime.fromtimestamp(date)
+    elif isinstance(date, str):
+      return strToDatetime(date)
+    else:
+      raise ValueError('unsupported date type, type={t}.'.format(t=type(date)))
+  
   @staticmethod
   def fromDict(obj):
     if obj is None:
       return None
-    date = strToDatetime(obj['datetime'])
+    date = OneTick.importDate(obj['datetime'])
     one = OneTick(obj['ask'], obj['bid'], date)
     return one
   
@@ -308,3 +319,43 @@ class PlayerActions:
   CloseForProfit = 'CloseForProfit'
   CloseForLossCut = 'CloseForLossCut'
   Exit = 'Exit'
+
+
+class Summary(object):
+  def __init__(self, date, askMax, askMin, askAverage, askOpen, askClose):
+    self.date = date
+    self.askMax = askMax
+    self.askMin = askMin
+    self.askAverage = askAverage
+    self.askOpen = askOpen
+    self.askClose = askClose
+  
+  def toDict(self):
+    return {
+      'datetime': self.date.timestamp(),
+      'ask_max': self.askMax,
+      'ask_min': self.askMin,
+      'ask_average': self.askAverage,
+      'ask_open': self.askOpen,
+      'ask_close': self.askClose
+    }
+  
+  @staticmethod
+  def fromDict(d):
+    date = datetime.datetime.fromtimestamp(d['datetime'])
+    askMax = d['ask_max']
+    askMin = d['ask_min']
+    askAverage = d['ask_average']
+    askOpen = d['ask_open']
+    askClose = d['ask_close']
+    return Summary(date, askMax, askMin, askAverage, askOpen, askClose)
+  
+  def __str__(self):
+    return (('Summary(date={date}, ' +
+             'askMax={askMax:.0f}, askMin={askMin:.0f}, ' +
+             'askAverage={askAverage:.0f}, ' +
+             'askOpen={askOpen:.0f}, askClose={askClose:.0f}')
+            .format(date=self.date,
+                    askMax=self.askMax, askMin=self.askMin,
+                    askAverage=self.askAverage,
+                    askOpen=self.askOpen, askClose=self.askClose))
