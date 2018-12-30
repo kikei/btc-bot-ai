@@ -1,0 +1,35 @@
+[aimai.db]
+username = REMOTE_USERNAME
+password = REMOTE_PASSWORD
+uri = https://aimai.example.net
+
+[database]
+mongo.host = mongodb
+mongo.user = root
+mongo.password = MONGO_PASSWORD
+mongo.port = 27017
+
+[sync]
+exchangers = bitflyer, quoine
+step.seconds = 86400
+listen.interval.seconds = 1
+
+[summarize]
+exchangers = bitflyer, quoine
+
+[export]
+exchangers = bitflyer, quoine
+data.dir = ../data/raw
+data.npy = summary_{exchanger}_{unit}_{ty}.npy
+
+[supervisor]
+exchangers = bitflyer, quoine
+data.dir = ../data/raw
+
+[train]
+data.dir = ../data/raw
+data.npy = summary_{exchanger}_{unit}_{ty}.npy
+model.dir = ../data/models
+model.h5 = {label}.h5
+model.json = {label}_model.json
+accuracy.min = 0.8
