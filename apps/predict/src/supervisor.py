@@ -91,7 +91,7 @@ def rectify(v, peeks):
   k2 = [(k, -1) for k in np.where(peeks <= -1.)[0]]
   k = sorted(k1 + k2, key=lambda a:a[0])
   w = np.zeros(v.shape)
-  for r in ranges(k, indexEnd=len(v)):
+  for r in ranges(k, indexEnd=len(v) - 1):
     start = r['start']
     end = r['end']
     peek = r['key']
