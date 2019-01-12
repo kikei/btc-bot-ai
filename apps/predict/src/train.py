@@ -155,7 +155,7 @@ lbh0 = lbh1[len(lbh1)-availableSize+sampleSize-1:]
 sbh0 = sbh1[len(sbh1)-availableSize+sampleSize-1:]
 
 trainRate = 1.0
-unsupervisedSize = 85
+unsupervisedSize = 36
 trainSize = int((Xbh.shape[0] - unsupervisedSize) * trainRate)
 XbhTrain, XbhTest = Xbh[0:trainSize], Xbh[trainSize:]
 
