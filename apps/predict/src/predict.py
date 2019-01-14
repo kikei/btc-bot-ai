@@ -1,3 +1,5 @@
+import datetime
+
 # Numpy
 import numpy as np
 
@@ -72,6 +74,8 @@ Xbhi1 = load('bitflyer', 'hourly', 'askAverageConv')
 Xbhi2 = load('bitflyer', 'hourly', 'askAverageBase')
 Xbhi3 = load('bitflyer', 'hourly', 'askAveragePrc1')
 Xbhi4 = load('bitflyer', 'hourly', 'askAveragePrc2')
+Xbm1 = loadnpy(config, 'bitflyer', 'minutely', 'askAverage')
+Xqm1 = loadnpy(config, 'quoine', 'minutely', 'askAverage')
 #Xbhi5 = load('bitflyer', 'hourly', 'askOpenLag')
 longs = load('bitflyer', 'daily', 'askAverageLong')
 shorts = load('bitflyer', 'daily', 'askAverageShort')
@@ -84,7 +88,7 @@ lbh1 = validated(lbh1)
 sbh1 = validated(sbh1)
 
 sampleSize = INPUT_SIZE
-featureCount = 9
+featureCount = 11
 
 availableSize = len(Xbhi4)
 dataSize = availableSize - sampleSize + 1
@@ -98,6 +102,16 @@ Xbh0[:,:,5] = to2d(Xbhi1, sampleSize, available=availableSize)
 Xbh0[:,:,6] = to2d(Xbhi2, sampleSize, available=availableSize)
 Xbh0[:,:,7] = to2d(Xbhi3, sampleSize, available=availableSize)
 Xbh0[:,:,8] = to2d(Xbhi4, sampleSize, available=availableSize)
+# setup minutely
+availableSizeM = (dataSize - 1) * 60 + sampleSize
+d = datetime.datetime.now()
+minutesToday = d.hour * 60 + d.minute
+Xbh0[-1:,:,9] = Xbm1[-sampleSize:]
+Xbh0[:-1,:,9] = to2d(Xbm1[:-minutesToday], sampleSize,
+                     available=availableSizeM, stride=60)
+Xbh0[-1:,:,10] = Xqm1[-sampleSize:]
+Xbh0[:-1,:,10] = to2d(Xqm1[:-minutesToday], sampleSize,
+                      available=availableSizeM, stride=60)
 
 dataSize = Xbh0.shape[0]
 Xbh = np.zeros((dataSize, Xbh0.shape[1] * Xbh0.shape[2]))
