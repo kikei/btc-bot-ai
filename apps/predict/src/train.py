@@ -21,9 +21,14 @@ logger = getLogger()
 config = readConfig('predict.ini')
 logger.info('Training started.')
 
+OFFSET_SAMPLES = config['train'].getint('samples.offset')
+INPUT_SIZE = config['train'].getint('fitting.inputsize')
+BATCH_SIZE = config['train'].getint('fitting.batchsize')
+EPOCHS = config['train'].getint('fitting.epochs')
+SAMPLES_PREDICT = config['train'].getint('samples.predict')
 ACCURACY_MIN = config['train'].getfloat('accuracy.min')
 
-def fit(X, y, model, rateTrain=0.9, epochs=1000):
+def fit(X, y, model, rateTrain=0.9, epochs=1000, batchSize=64):
   Xu, yu = balance(X, y, thres=0.5)
   trainCount = int(Xu.shape[0] * rateTrain)
   indexRandom = np.random.permutation(Xu.shape[0])
@@ -103,7 +108,6 @@ def plotDiff(X, ys, xlim=None, lpSize=168):
     p.limit(d, xlim=xlim)
   p.savefig('../figures/diff.svg')
 
-offset = 0
 
 #X1 = loadnpy(config, 'bitflyer', 'daily', 'askAverage')
 #X2 = loadnpy(config, 'bitflyer', 'daily', 'askMax')
@@ -111,28 +115,27 @@ offset = 0
 #X4 = loadnpy(config, 'quoine', 'daily', 'askAverage')
 #X5 = loadnpy(config, 'quoine', 'daily', 'askMax')
 #X6 = loadnpy(config, 'quoine', 'daily', 'askMin')
-Xbh1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverage')[offset:]
-Xbh2 = loadnpy(config, 'bitflyer', 'hourly', 'askMax')[offset:]
-Xbh3 = loadnpy(config, 'bitflyer', 'hourly', 'askMin')[offset:]
-Xbhb1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageBB+2')[offset:]
-Xbhb2 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageBB-2')[offset:]
-Xbhi1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageConv')[offset:]
-Xbhi2 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageBase')[offset:]
-Xbhi3 = loadnpy(config, 'bitflyer', 'hourly', 'askAveragePrc1')[offset:]
-Xbhi4 = loadnpy(config, 'bitflyer', 'hourly', 'askAveragePrc2')[offset:]
+Xbh1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverage')[OFFSET_SAMPLES:]
+Xbh2 = loadnpy(config, 'bitflyer', 'hourly', 'askMax')[OFFSET_SAMPLES:]
+Xbh3 = loadnpy(config, 'bitflyer', 'hourly', 'askMin')[OFFSET_SAMPLES:]
+Xbhb1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageBB+2')[OFFSET_SAMPLES:]
+Xbhb2 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageBB-2')[OFFSET_SAMPLES:]
+Xbhi1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageConv')[OFFSET_SAMPLES:]
+Xbhi2 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageBase')[OFFSET_SAMPLES:]
+Xbhi3 = loadnpy(config, 'bitflyer', 'hourly', 'askAveragePrc1')[OFFSET_SAMPLES:]
+Xbhi4 = loadnpy(config, 'bitflyer', 'hourly', 'askAveragePrc2')[OFFSET_SAMPLES:]
 #Xbhi5 = loadnpy(config, 'bitflyer', 'hourly', 'askOpenLag')
 #longs = loadnpy(config, 'bitflyer', 'daily', 'askAverageLong')
 #shorts = loadnpy(config, 'bitflyer', 'daily', 'askAverageShort')
-lbh1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageLong')[offset:]
-sbh1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageShort')[offset:]
+lbh1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageLong')[OFFSET_SAMPLES:]
+sbh1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageShort')[OFFSET_SAMPLES:]
 
 #longs = validated(longs)
 #shorts = validated(shorts)
 lbh1 = validated(lbh1)
 sbh1 = validated(sbh1)
 
-sampleSize = 24 * 7 * 1
-batchSize = 512
+sampleSize = INPUT_SIZE
 featureCount = 9
 
 availableSize = len(Xbhi4)
@@ -158,7 +161,7 @@ lbh0 = lbh1[len(lbh1)-availableSize+sampleSize-1:]
 sbh0 = sbh1[len(sbh1)-availableSize+sampleSize-1:]
 
 trainRate = 1.0
-unsupervisedSize = 36
+unsupervisedSize = SAMPLES_PREDICT
 trainSize = int((Xbh.shape[0] - unsupervisedSize) * trainRate)
 XbhTrain, XbhTest = Xbh[0:trainSize], Xbh[trainSize:]
 
@@ -168,15 +171,13 @@ sbh0Train, sbh0Test = sbh0[0:trainSize], sbh0[trainSize:]
 XbhTrain = zscore(XbhTrain)
 XbhTest = zscore(XbhTest)
 
-epochs = 300
-
 logger.warn('Training for long timings...')
 tlTrainStart = datetime.datetime.now()
 
 lmodel = buildModel((XbhTrain.shape[1],))
 lmodel.compile(optimizer='adadelta', loss='binary_crossentropy',
                metrics=[round_binary_accuracy])
-lhist = fit(XbhTrain, lbh0Train, lmodel, epochs=epochs)
+lhist = fit(XbhTrain, lbh0Train, lmodel, epochs=EPOCHS, batchSize=BATCH_SIZE)
 plotHistory('../figures/lhist.svg', lhist,
             keyAccuracy='round_binary_accuracy')
 tlTrainEnd = datetime.datetime.now()
@@ -187,7 +188,7 @@ tsTrainStart = datetime.datetime.now()
 smodel = buildModel((XbhTrain.shape[1],))
 smodel.compile(optimizer='adadelta', loss='binary_crossentropy',
                metrics=[round_binary_accuracy])
-shist = fit(XbhTrain, sbh0Train, smodel, epochs=epochs)
+shist = fit(XbhTrain, sbh0Train, smodel, epochs=EPOCHS, batchSize=BATCH_SIZE)
 plotHistory('../figures/shist.svg', shist, keyAccuracy='round_binary_accuracy')
 tsTrainEnd = datetime.datetime.now()
 
@@ -195,10 +196,10 @@ longAcc = lhist.history['val_round_binary_accuracy'][-1]
 shortAcc = shist.history['val_round_binary_accuracy'][-1]
 
 logger.warn(('Training done, longAcc.={long:.2f}, shortAcc.={short:.2f}, ' +
-             '#samples={ns:.0f}, #epochs={ne:.0f}, ' +
+             '#samples={ns:.0f}, #epochs={ne:.0f}, #batchSize={nb:.0f}, ' +
              'longTime={lt:.1f}, shortTime={st:.1f}.')
             .format(long=longAcc * 100, short=shortAcc * 100,
-                    ns=trainSize, ne=epochs,
+                    ns=trainSize, ne=EPOCHS, nb=BATCH_SIZE,
                     lt=(tlTrainEnd - tlTrainStart).total_seconds(),
                     st=(tsTrainEnd - tsTrainStart).total_seconds()))
 

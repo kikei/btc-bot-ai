@@ -33,3 +33,11 @@ model.dir = ../data/models
 model.h5 = {label}.h5
 model.json = {label}_model.json
 accuracy.min = 0.8
+samples.offset = 0
+samples.predict = 36
+fitting.inputsize = 168
+fitting.batchsize = 512
+fitting.epochs = 300
+
+[predict]
+fitting.inputsize = 168

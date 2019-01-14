@@ -15,6 +15,8 @@ logger.debug('Start prediction.')
 
 config = readConfig('predict.ini')
 
+INPUT_SIZE = config['predict'].getint('fitting.inputsize')
+
 def load(exchanger, unit, ty):
   return loadnpy(config, exchanger, unit, ty)
 
@@ -81,8 +83,7 @@ shorts = validated(shorts)
 lbh1 = validated(lbh1)
 sbh1 = validated(sbh1)
 
-sampleSize = 24 * 7 * 1
-batchSize = 64
+sampleSize = INPUT_SIZE
 featureCount = 9
 
 availableSize = len(Xbhi4)
@@ -138,8 +139,11 @@ logger.info('#lExpect={lex}, #lPredict={lpr}, #sExpect={sex}, #sPredict={spr}'
                     sex=np.where(sbh0 > thresExp)[0].shape[0],
                     spr=np.where(sbhPred > thresPred)[0].shape[0]))
 
-for i in range(11, 0, -1):
+SHOW_LAST_PREDICTS = 24 * 3
+
+for i in range(SHOW_LAST_PREDICTS, 0, -1):
   if i == 1:
+
     logger.warn('Current predicts are long={long:2.0f}%, short={short:2.0f}%'
                 .format(i=i, long=lbhPred[-i] * 100, short=sbhPred[-i] * 100))
   else:
