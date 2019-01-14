@@ -8,7 +8,7 @@ logger = getLogger()
 config = readConfig('predict.ini')
 
 EXCHANGERS = config['summarize'].getlist('exchangers')
-UNITS = ['hourly', 'daily', 'weekly']
+UNITS = ['minutely', 'hourly', 'daily', 'weekly']
 
 def summarizeTicks(allTicks, extractKey, itemsEnd, maxCount):
   asks = np.zeros(maxCount)
@@ -27,6 +27,9 @@ def summarizeTicks(allTicks, extractKey, itemsEnd, maxCount):
                   askOpen=np.mean(asks[0:itemsEnd]),
                   askClose=np.mean(asks[n-itemsEnd:n]))
 
+def keyMinute(d):
+  return (d.date.year, d.date.month, d.date.day, d.date.hour, d.date.minute)
+
 def keyHour(d):
   return (d.date.year, d.date.month, d.date.day, d.date.hour)
 
@@ -40,7 +43,11 @@ def keyWeek(d):
 
 def ticksBy(ticks, exchanger, unit, dateStart=None):
   allTicks = ticks.all(exchanger, dateStart=dateStart)
-  if unit == 'hourly':
+  if unit == 'minutely':
+    extractKey = keyMinute
+    itemsEnd = 8
+    maxCount = int(60)
+  elif unit == 'hourly':
     extractKey = keyHour
     itemsEnd = 16
     maxCount = int(60 * 60)

@@ -63,11 +63,13 @@ class Summaries(object):
   def __init__(self, db):
     self.collections = {
       'bitflyer': {
+        'minutely': db.tick_bitflyer_minutely,
         'hourly': db.tick_bitflyer_hourly,
         'daily': db.tick_bitflyer_daily,
         'weekly': db.tick_bitflyer_weekly,
       },
       'quoine': {
+        'minutely': db.tick_quoine_minutely,
         'hourly': db.tick_quoine_hourly,
         'daily': db.tick_quoine_daily,
         'weekly': db.tick_quoine_weekly,

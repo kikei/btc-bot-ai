@@ -11,7 +11,7 @@ config = readConfig('predict.ini')
 DIR_DATA = config['export'].get('data.dir')
 FILE_DATA = config['export'].get('data.npy')
 EXCHANGERS = config['export'].getlist('exchangers')
-UNITS = ['hourly', 'daily', 'weekly']
+UNITS = ['minutely', 'hourly', 'daily', 'weekly']
 
 def completion(f, sums, step):
   size = len(sums)
@@ -43,6 +43,7 @@ def main():
   db = getDBInstance(config)
   summaries = Summaries(db.tick_summary_db)
   stepSeconds = {
+    'minutely': 60,
     'hourly': 60 * 60,
     'daily': 24 * 60 * 60,
     'weekly': 7 * 24 * 60 * 60

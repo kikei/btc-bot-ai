@@ -124,6 +124,8 @@ Xbhi1 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageConv')[OFFSET_SAMPLES:]
 Xbhi2 = loadnpy(config, 'bitflyer', 'hourly', 'askAverageBase')[OFFSET_SAMPLES:]
 Xbhi3 = loadnpy(config, 'bitflyer', 'hourly', 'askAveragePrc1')[OFFSET_SAMPLES:]
 Xbhi4 = loadnpy(config, 'bitflyer', 'hourly', 'askAveragePrc2')[OFFSET_SAMPLES:]
+Xbm1 = loadnpy(config, 'bitflyer', 'minutely', 'askAverage')
+Xqm1 = loadnpy(config, 'quoine', 'minutely', 'askAverage')
 #Xbhi5 = loadnpy(config, 'bitflyer', 'hourly', 'askOpenLag')
 #longs = loadnpy(config, 'bitflyer', 'daily', 'askAverageLong')
 #shorts = loadnpy(config, 'bitflyer', 'daily', 'askAverageShort')
@@ -136,7 +138,7 @@ lbh1 = validated(lbh1)
 sbh1 = validated(sbh1)
 
 sampleSize = INPUT_SIZE
-featureCount = 9
+featureCount = 11
 
 availableSize = len(Xbhi4)
 dataSize = availableSize - sampleSize + 1
@@ -150,6 +152,16 @@ Xbh0[:,:,5] = to2d(Xbhi1, sampleSize, available=availableSize)
 Xbh0[:,:,6] = to2d(Xbhi2, sampleSize, available=availableSize)
 Xbh0[:,:,7] = to2d(Xbhi3, sampleSize, available=availableSize)
 Xbh0[:,:,8] = to2d(Xbhi4, sampleSize, available=availableSize)
+# setup minutely
+availableSizeM = (dataSize - 1) * 60 + sampleSize
+d = datetime.datetime.now()
+minutesToday = d.hour * 60 + d.minute
+Xbh0[-1:,:,9] = Xbm1[-sampleSize:]
+Xbh0[:-1,:,9] = to2d(Xbm1[:-minutesToday], sampleSize,
+                     available=availableSizeM, stride=60)
+Xbh0[-1:,:,10] = Xqm1[-sampleSize:]
+Xbh0[:-1,:,10] = to2d(Xqm1[:-minutesToday], sampleSize,
+                      available=availableSizeM, stride=60)
 
 dataSize = Xbh0.shape[0]
 Xbh = np.zeros((dataSize, Xbh0.shape[1] * Xbh0.shape[2]))
