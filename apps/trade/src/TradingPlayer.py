@@ -2,7 +2,7 @@ import logging
 
 from classes import PlayerActions
 from ActionsDispatcher import ActionsDispatcher, Action
-from ConfidenceMonitor import FinishMonitoring
+from monitors.AbstractMonitor import FinishMonitoring
 from BudgetManager import BudgetManager
 from TradeExecutor import TradeExecutor
 
@@ -31,6 +31,8 @@ class TradingPlayer(object):
       PlayerActions.OpenLong: executor.handleOpenLong,
       PlayerActions.OpenShort: executor.handleOpenShort,
       PlayerActions.IgnoreConfidence: executor.handleIgnoreConfidence,
+      PlayerActions.CloseForProfit: executor.handleClose,
+      PlayerActions.CloseForLossCut: executor.handleClose,
       PlayerActions.Exit: lambda: FinishMonitoring.raiseEvent('Exit')
     })
     self.dispatcher = dispatcher

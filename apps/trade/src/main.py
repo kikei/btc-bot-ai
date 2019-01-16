@@ -11,12 +11,17 @@ import pymongo
 CWD = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(CWD, '..', 'conf'))
 
+from monitors.AbstractListener import AbstractListener
+from monitors.monitors import ConfidenceMonitor, PositionMonitor
+
 import Properties
 
 from classes import Confidence
 from Models import Models
 from TradingPlayer import TradingPlayer
-from ConfidenceMonitor import ConfidenceMonitor
+from PositionsPlayer import PositionsPlayer
+from PositionsManager import PositionsManager
+from TradeExecutor import TradeExecutor
 
 def getDBInstance(host=None, port=None):
   if host is None:
@@ -73,15 +78,44 @@ class ConfidenceListener(object):
     else:
       self.logger.debug('No new confidence.')
 
+class PositionListener(AbstractListener):
+  def __init__(self, models, accountId, Player, logger=None):
+    if logger is None:
+      logger = logging.getLogger()
+    self.logger = logger
+    self.player = Player(models, accountId=accountId, logger=logger)
+  
+  def handleEntry(self, positions):
+    if len(positions) > 0:
+      self.logger.info('Open positions exists, #p={n}.'
+                       .format(n=len(positions)))
+      self.player.run()
+    else:
+      self.logger.debug('No opening position.')
+
+def createPositionsPlayer(models, accountId, logger=None):
+  return PositionsPlayer(models,
+		         ActionCreator=PositionsManager,
+                         ActionExecutor=TradeExecutor,
+                         accountId=accountId,
+                         logger=logger)
 
 def runStep(logger=None):
   accountId = Properties.ACCOUNT_ID
   models = getModels(getDBInstance())
-  listener = ConfidenceListener(models, accountId=accountId, logger=logger)
-  monitor = ConfidenceMonitor(models, accountId=accountId, loop=False, logger=logger)
-  monitor.setListener(listener)
-  monitor.start()
-
+  confidenceListener = ConfidenceListener(models, accountId=accountId, logger=logger)
+  confidenceMonitor = ConfidenceMonitor(models, accountId=accountId, loop=False, logger=logger)
+  confidenceMonitor.setListener(confidenceListener)
+  
+  positionListener = PositionListener(models, Player=createPositionsPlayer,
+                                      accountId=accountId,
+                                      logger=logger)
+  positionMonitor = PositionMonitor(models, accountId=accountId,
+                                    loop=False, logger=logger)
+  positionMonitor.setListener(positionListener)
+  
+  confidenceMonitor.start()
+  positionMonitor.start()
 
 def main():
   checkOk = checkProperties()
