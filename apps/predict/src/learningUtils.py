@@ -52,10 +52,10 @@ def round_binary_accuracy(y_true, y_pred):
   return K.mean(K.equal(K.round(y_true), K.round(y_pred)), axis=-1)
 
 
-def zscore(x):
-  xmean = np.mean(x, axis=1, keepdims=True)
-  xstd = np.std(x, axis=1, keepdims=True)
-  zscore = (x - xmean) / xstd
+def zscore(x, axis=1, d=1e-5):
+  xmean = np.mean(x, axis=axis, keepdims=True)
+  xstd = np.std(x, axis=axis, keepdims=True)
+  zscore = (x - xmean) / (xstd + d)
   return zscore
 
 

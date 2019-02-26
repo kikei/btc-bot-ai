@@ -11,6 +11,7 @@ import matplotlib.pyplot as plt
 # Keras
 from keras.layers import Dense, Dropout, Flatten
 from keras.models import Model, Sequential
+from keras.layers.recurrent import LSTM
 from keras import backend as K
 
 from Plotter import Plotter
@@ -39,14 +40,35 @@ def fit(X, y, model, rateTrain=0.9, epochs=1000, batchSize=64):
                    verbose=1, validation_split=0.1, shuffle=True)
   return hist
 
+def fitLSTM(X, y, model, rateTrain=0.9, epochs=1000, batchSize=64):
+  Xu, yu = balance(X, y, thres=0.5)
+  trainCount = int(Xu.shape[0] * rateTrain)
+  indexRandom = np.random.permutation(Xu.shape[0])
+  indexTrain = indexRandom[:trainCount]
+  XTrain = Xu[indexTrain]
+  yTrain = yu[indexTrain]
+  #XTrain = np.reshape(XTrain, (XTrain.shape[0], 1, XTrain.shape[1]))
+  hist = model.fit(XTrain, yTrain, batch_size=batchSize, epochs=epochs,
+                   verbose=1, validation_split=0.1, shuffle=True)
+  return hist
 
-def buildModel(inputShape):
+def buildModel_1(inputShape):
   model = Sequential()
   model.add(Dense(256, activation='relu', input_shape=inputShape))
   model.add(Dropout(0.5))
   model.add(Dense(256, activation='relu'))
   model.add(Dropout(0.5))
   model.add(Dense(32, activation='relu'))
+  model.add(Dense(32, activation='relu'))
+  model.add(Dense(1, activation='sigmoid'))
+  return model
+
+def buildModel(inputShape):
+  model = Sequential()
+  model.add(LSTM(128, input_shape=(inputShape), return_sequences=False))
+  model.add(Dropout(0.5))
+  model.add(Dense(128, activation='relu'))
+  model.add(Dropout(0.5))
   model.add(Dense(32, activation='relu'))
   model.add(Dense(1, activation='sigmoid'))
   return model
@@ -138,11 +160,14 @@ lbh1 = validated(lbh1)
 sbh1 = validated(sbh1)
 
 sampleSize = INPUT_SIZE
-featureCount = 11
+featureCount = 9 + 60 * 2
+lookBack = 1
 
 availableSize = len(Xbhi4)
 dataSize = availableSize - sampleSize + 1
 Xbh0 = np.zeros((dataSize, sampleSize, featureCount))
+print('Xbh0.shape={s}.'.format(s=Xbh0.shape))
+
 Xbh0[:,:,0] = to2d(Xbh1, sampleSize, available=availableSize)
 Xbh0[:,:,1] = to2d(Xbh2, sampleSize, available=availableSize)
 Xbh0[:,:,2] = to2d(Xbh3, sampleSize, available=availableSize)
@@ -152,22 +177,25 @@ Xbh0[:,:,5] = to2d(Xbhi1, sampleSize, available=availableSize)
 Xbh0[:,:,6] = to2d(Xbhi2, sampleSize, available=availableSize)
 Xbh0[:,:,7] = to2d(Xbhi3, sampleSize, available=availableSize)
 Xbh0[:,:,8] = to2d(Xbhi4, sampleSize, available=availableSize)
+
 # setup minutely
-availableSizeM = (dataSize - 1) * 60 + sampleSize
+availableSizeM = dataSize * 60 + sampleSize
 d = datetime.datetime.now()
 minutesToday = d.hour * 60 + d.minute
-Xbh0[-1:,:,9] = Xbm1[-sampleSize:]
-Xbh0[:-1,:,9] = to2d(Xbm1[:-minutesToday], sampleSize,
-                     available=availableSizeM, stride=60)
-Xbh0[-1:,:,10] = Xqm1[-sampleSize:]
-Xbh0[:-1,:,10] = to2d(Xqm1[:-minutesToday], sampleSize,
+minutesInHour = d.minute
+Xbh0[-1,0,9:69] = Xbm1[-sampleSize*60:]
+Xbh0[:-1,0,9:69] = to2d(Xbm1[:-minutesInHour], 60,
+                        available=availableSizeM, stride=60)
+Xbh0[-1,0,69:129] = Xqm1[-sampleSize*60:]
+Xbh0[:-1,0,69:129] = to2d(Xqm1[:-minutesInHour], 60,
                       available=availableSizeM, stride=60)
 
-dataSize = Xbh0.shape[0]
-Xbh = np.zeros((dataSize, Xbh0.shape[1] * Xbh0.shape[2]))
-for i in range(0, dataSize):
-  for j in range(0, featureCount):
-    Xbh[i,j*sampleSize:(j+1)*sampleSize] = Xbh0[i,:,j]
+# dataSize = Xbh0.shape[0]
+# Xbh = np.zeros((dataSize, Xbh0.shape[1] * Xbh0.shape[2]))
+# for i in range(0, dataSize):
+#   for j in range(0, featureCount):
+#     Xbh[i,j*sampleSize:(j+1)*sampleSize] = Xbh0[i,:,j]
+Xbh = Xbh0
 
 lbh0 = lbh1[len(lbh1)-availableSize+sampleSize-1:]
 sbh0 = sbh1[len(sbh1)-availableSize+sampleSize-1:]
@@ -180,16 +208,34 @@ XbhTrain, XbhTest = Xbh[0:trainSize], Xbh[trainSize:]
 lbh0Train, lbh0Test = lbh0[0:trainSize], lbh0[trainSize:]
 sbh0Train, sbh0Test = sbh0[0:trainSize], sbh0[trainSize:]
 
-XbhTrain = zscore(XbhTrain)
-XbhTest = zscore(XbhTest)
+def zscoreWindow(x, window=16, axis=1):
+  y = np.zeros(x.shape)
+  for i in range(0, x.shape[0]):
+    if i < window:
+      start = 0
+      end = window
+      j = i
+    else:
+      start = i - window
+      end = i
+      j = window - 1
+    y[i] = zscore(x[start:end], axis=axis)[j]
+  return y
 
-logger.warn('Training for long timings...')
+normalizeWindowSize = 256
+XbhTrain = zscoreWindow(XbhTrain, window=normalizeWindowSize, axis=None)
+XbhTest = zscoreWindow(XbhTest, window=normalizeWindowSize, axis=None)
+
+logger.warn('Training for long timings train.shape={s}...'
+            .format(s=XbhTrain.shape))
 tlTrainStart = datetime.datetime.now()
 
-lmodel = buildModel((XbhTrain.shape[1],))
+# Input needs to be [samples, timesteps, features] in LSTM.
+lmodel = buildModel(inputShape=(XbhTrain.shape[1], XbhTrain.shape[2]))
 lmodel.compile(optimizer='adadelta', loss='binary_crossentropy',
                metrics=[round_binary_accuracy])
-lhist = fit(XbhTrain, lbh0Train, lmodel, epochs=EPOCHS, batchSize=BATCH_SIZE)
+lhist = fitLSTM(XbhTrain, lbh0Train, lmodel,
+                epochs=EPOCHS, batchSize=BATCH_SIZE)
 plotHistory('../figures/lhist.svg', lhist,
             keyAccuracy='round_binary_accuracy')
 tlTrainEnd = datetime.datetime.now()
@@ -197,10 +243,11 @@ tlTrainEnd = datetime.datetime.now()
 logger.warn('Training for short timings...')
 tsTrainStart = datetime.datetime.now()
 
-smodel = buildModel((XbhTrain.shape[1],))
+smodel = buildModel(inputShape=(XbhTrain.shape[1], XbhTrain.shape[2]))
 smodel.compile(optimizer='adadelta', loss='binary_crossentropy',
                metrics=[round_binary_accuracy])
-shist = fit(XbhTrain, sbh0Train, smodel, epochs=EPOCHS, batchSize=BATCH_SIZE)
+shist = fitLSTM(XbhTrain, sbh0Train, smodel,
+                epochs=EPOCHS, batchSize=BATCH_SIZE)
 plotHistory('../figures/shist.svg', shist, keyAccuracy='round_binary_accuracy')
 tsTrainEnd = datetime.datetime.now()
 
