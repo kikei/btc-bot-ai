@@ -32,6 +32,14 @@ def completion(f, sums, step):
   w = v[:i+1]
   return w
 
+def removeNaN(w):
+  for i in np.argwhere(np.isnan(w)):
+    if i == 0:
+      w[i] = w[0]
+    else:
+      w[i] = w[i-1]
+  return w
+
 def seriesDate(sums, step):
   if len(sums) == 0:
     return None
@@ -63,6 +71,8 @@ def main():
         'askOpen': completion(lambda s:s.askOpen, sums, step),
         'askClose': completion(lambda s:s.askClose, sums, step)
       }
+      for ty in completes:
+        completes[ty] = removeNaN(completes[ty])
       for ty in completes:
         completed = completes[ty]
         if len(dates) != len(completed):
