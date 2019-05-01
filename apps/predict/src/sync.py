@@ -27,6 +27,7 @@ def sync(dashb, ticksModel):
     else:
       dateStart = SYNC_DATE_START
     start = dateStart.timestamp()
+    count = 0
     logger.debug('Start from {s} to {e}.'.format(s=start, e=finish))
     while start < finish:
       logger.info('Syncing {ex} after {s}.'
@@ -39,9 +40,12 @@ def sync(dashb, ticksModel):
         logger.debug('Writing {count} items.'.format(count=len(ticks)))
         ticksModel.saveAll(exchanger, toSave)
         start = ticks[-1]['datetime']
+        count += len(ticks)
       else:
         start = start + SYNC_STEP_SECONDS
       time.sleep(SYNC_INTERVAL_SECONDS)
+    if count == 0:
+      logger.error('No ticks synchronized. Ticker may not be working!!')
 
 
 def main():
