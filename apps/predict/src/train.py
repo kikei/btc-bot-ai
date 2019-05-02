@@ -198,36 +198,7 @@ if yAcc < ACCURACY_MIN:
 
 saveModel(config, yModel, 'trend')
 
-ybhPred = yModel.predict(zscore(Xbh))[:,0]
-
-Xbh1_ = Xbh1[len(Xbh1)-availableSize+sampleSize-1+skipOld:]
-
-thresExp = 0.9
-thresPred = 0.8
-
-def plotPredictedTrend(p, X, yss, xlim=None):
-  xPlot = np.arange(0, len(X), 1)
-  # values
-  p.plot(xPlot, X, n=0, label='ask avr.')
-  p.limit(X, xlim, n=0)
-  n = 1
-  for ys in yss:
-    for y, label in ys:
-      p.plot(xPlot, y, n=n, label=label)
-    p.limit(ys[0][0], xlim, n=n)
-    n += 1
-  p.hlines(0.5, 0, len(X), n=1, linewidth=0.4)
-  p.savefig('../figures/predicted.svg')
-
-ys = [
-  [(ybh0, 'trend exp.'), (ybhPred, 'trend pred.')],
-  [(np.abs(ybh0 - ybhPred), 'trend delta')]
-]
-p = Plotter(plt, subplots=(3, 1), linewidth=0.4)
-xlim = (Xbh1_.shape[0] - 6000, Xbh1_.shape[0] - 1000)
-print('Xbh1_.shape={0}, ybh0.shape={1}'.format(Xbh1_.shape, ybh0.shape))
-plotPredictedTrend(p, Xbh1_, ys, xlim=xlim)
-
+logger.debug('Predicting, Xbh.shape={x}.'.format(x=Xbh.shape))
 logger.info('#Ticks={tick}, #Train={train}, #Predicted={predict}.'
             .format(tick=Xbh.shape[0], train=trainSize,
                     predict=Xbh.shape[0] - trainSize))
