@@ -29,6 +29,25 @@ def Medium(k, x):
     y[i] = (np.max(x[i:i+k]) + np.min(x[i:i+k])) / 2
   return y
 
+def RSI(x, k, slide=None):
+  N = x.shape[0]
+  if slide is None:
+    slide = 0
+  y = np.zeros(x.shape)
+  dx = x[1:] - x[:N-1]
+  for i in range(0, N - 1):
+    s = i - k + slide
+    if s < 0: s = 0
+    e = i + slide
+    if e >= N - 1: e = N - 2
+    inc = np.sum(dx[s + np.where(dx[s:e] > 0)[0]])
+    dec = np.sum(dx[s + np.where(dx[s:e] < 0)[0]])
+    if inc - dec == 0:
+      y[i+1] = 0
+    else:
+      y[i+1] = inc / (inc - dec)
+  return y
+
 class BollingerBand(object):
   def __init__(self, x, k=28):
     self.x = x
