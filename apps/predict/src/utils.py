@@ -67,6 +67,12 @@ def savenpy(config, data, exchanger, unit, ty):
   path = (DIR_DATA + '/' + NPY_DATA).format(exchanger=exchanger, unit=unit, ty=ty)
   return np.save(path, data)
 
+def nanIn(x):
+  nans = np.argwhere(np.isnan(x))
+  if len(nans) == 0:
+    return None
+  else:
+    return nans
 
 def reportConfidence(config, longConf, shortConf, logger):
   AIMAI_DB_URI = config['aimai.db'].get('uri')
