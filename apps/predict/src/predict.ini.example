@@ -21,6 +21,8 @@ exchangers = bitflyer, quoine
 exchangers = bitflyer, quoine
 data.dir = ../data/raw
 data.npy = summary_{exchanger}_{unit}_{ty}.npy
+completion.maxHourly = 24
+completion.maxDaily = 7
 
 [supervisor]
 exchangers = bitflyer, quoine
