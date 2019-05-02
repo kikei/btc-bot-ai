@@ -91,6 +91,8 @@ def trendStrength(values, vt):
   for i in range(0, len(ks) - 1):
     k0, v0 = ks[i]
     k1, v1 = ks[i+1]
+    if k0 + 1 == k1:
+      continue
     v = values[k0+1:k1]
     vmax = np.max(v)
     vmin = np.min(v)
