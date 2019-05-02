@@ -7,7 +7,7 @@ matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
 from charts import RSI, BollingerBand, Ichimoku
-from dsp import lpfilter
+from dsp import lpfilter, crosszero
 from learningUtils import sigmoid, differentiate
 from utils import readConfig, getLogger, loadnpy, savenpy, nanIn
 
