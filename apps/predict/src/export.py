@@ -11,7 +11,7 @@ config = readConfig('predict.ini')
 DIR_DATA = config['export'].get('data.dir')
 FILE_DATA = config['export'].get('data.npy')
 EXCHANGERS = config['export'].getlist('exchangers')
-UNITS = ['minutely', 'hourly', 'daily', 'weekly']
+UNITS = config['export'].getlist('units')
 MAX_COMPLETION_HOURLY = config['export'].getint('completion.maxHourly')
 MAX_COMPLETION_DAILY = config['export'].getint('completion.maxDaily')
 
