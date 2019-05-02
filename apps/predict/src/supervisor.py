@@ -24,29 +24,6 @@ def load(exchanger, unit, ty):
 def save(data, exchanger, unit, ty):
   savenpy(config, data, exchanger, unit, ty)
 
-def crossZero(v, thres=0., ud=+1.0, du=-1.0):
-  w = np.zeros(v.shape)
-  udZero = None
-  duZero = None
-  for i in range(1, len(v)):
-    if v[i-1] > 0. and v[i] < 0.:
-      if thres != 0.:
-        udZero = i
-      else:
-        w[i] = ud
-    elif v[i-1] > -thres and v[i] < -thres and udZero is not None:
-      w[udZero] = ud
-      udZero = None
-    elif v[i-1] < 0. and v[i] > 0.:
-      if thres != 0.:
-        duZero = i
-      else:
-        w[duZero] = du
-    elif v[i-1] < thres and v[i] > thres and duZero is not None:
-      w[duZero] = du
-      duZero = None
-  return w
-
 def ranges(lst, f=lambda x:x, indexEnd=-1):
   indexStart = 0
   lastKey = None
@@ -140,7 +117,7 @@ def generateAnswer(v1, lpfs):
   # Smooth moving of derivative
   v5 = np.convolve(v4, lpf2, mode='same')
   # Find trend conversions
-  v6 = crossZero(v5, thres=5e-4)
+  v6 = crosszero(v5, thres=5e-4)
   # Find peeks; v2[p] is max, v2[q] is min | v7[p] = +1, v7[q] = -1
   v7 = rectify(v2, v6)
   # Remove peeks close to another
