@@ -24,11 +24,17 @@ from PositionsManager import PositionsManager
 from TradeExecutor import TradeExecutor
 
 def getDBInstance(host=None, port=None):
-  if host is None:
-    host = Properties.MONGO_HOST
-  if port is None:
-    port = Properties.MONGO_PORT
-  client = pymongo.MongoClient(host=host, port=port)
+  server = 'mongodb://{user}:{password}@{host}:{port}'
+  user = Properties.MONGO_USER
+  password = Properties.MONGO_PASSWORD
+  host = Properties.MONGO_HOST
+  port  = Properties.MONGO_PORT
+  assert all([user is not None,
+              password is not None,
+              host is not None,
+              port is not None])
+  server = server.format(host=host, port=port, user=user, password=password)
+  client = pymongo.MongoClient(host=server)
   return client
 
 
