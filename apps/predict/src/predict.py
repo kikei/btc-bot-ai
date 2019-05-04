@@ -112,26 +112,6 @@ p.limit(ybh0, xlim, n=1)
 p.plot(xPlot, np.abs(ybh0 - ybhPred), n=2, label='delta')
 p.savefig('../figures/predicted.svg')
 
-# Plot predicted
-# Xbh1_ = Xbh1[len(Xbh1)-availableSize+sampleSize-1:]
-# thresExp = 0.9
-# thresPred = 0.8
-# ys = [(lbh0, lbhPred, 'long'), (sbh0, sbhPred, 'short')]
-# plotPredicted(Xbh1_, ys, thresPredict=thresPred, thresExpect=thresExp,
-#               xlim=(Xbh1_.shape[0] - 1000, Xbh1_.shape[0]))
-
-# Plot diff
-# plotDiff(Xbh1_, ys)
-
-# xlbhPred = np.where(lbhPred > thresPred)[0]
-# xsbhPred = np.where(sbhPred > thresPred)[0]
-#
-# logger.info('#lExpect={lex}, #lPredict={lpr}, #sExpect={sex}, #sPredict={spr}'
-#             .format(lex=np.where(lbh0 > thresExp)[0].shape[0],
-#                     lpr=np.where(lbhPred > thresPred)[0].shape[0],
-#                     sex=np.where(sbh0 > thresExp)[0].shape[0],
-#                     spr=np.where(sbhPred > thresPred)[0].shape[0]))
-#
 SHOW_LAST_PREDICTS = 24 * 3
 
 for i in range(SHOW_LAST_PREDICTS, 0, -1):
@@ -142,23 +122,10 @@ for i in range(SHOW_LAST_PREDICTS, 0, -1):
     logger.info('Predicts[{i:2.0f}] are trend={trend:0.2f}.'
                 .format(i=i, trend=ybhPred[-i]))
 
-# if lbhPred[-1] > thresPred:
-#   logger.warn('Predicted chance to get LONG!, conf={conf:2.0f}, ask={ask:.0f}.'
-#               .format(conf=lbhPred[-1] * 100, ask=Xbh1[-1]))
-#
-# if sbhPred[-1] > thresPred:
-#   logger.warn('Predicted chance to get SHORT!, conf={conf:2.0f}, ask={ask:.0f}.'
-#               .format(conf=sbhPred[-1] * 100, ask=Xbh1[-1]))
-
 logger.debug('End prediction.')
 
+logger.debug('Start registering.')
 yTrend = ybhPred[-1].item()
-# longConf = lbhPred[-1].item()
-# shortConf = sbhPred[-1].item()
-
 logger.debug('Registering confidences, trend={trend:.3f}.'.format(trend=yTrend))
-
-#reportTrend(config, yTrend, logger)
-#reportConfidence(config, longConf, shortConf, logger)
-
+reportTrend(config, yTrend, logger)
 logger.debug('End registering.')

@@ -95,6 +95,7 @@ def reportConfidence(config, longConf, shortConf, logger):
 def reportTrend(config, trend, logger):
   dashb = getDashboardIf(config, logger=logger)
   now = datetime.datetime.now()
+  dashb.saveTrend(now, trend)
 
 
 # ログファイル設定
