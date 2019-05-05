@@ -55,11 +55,14 @@ def getDBInstance(config):
   client = pymongo.MongoClient(host=server)
   return client
 
-def loadnpy(config, exchanger, unit, ty):
+def loadnpy(config, exchanger, unit, ty, nan=None):
   DIR_DATA = config['train'].get('data.dir')
   NPY_DATA = config['train'].get('data.npy')
   path = (DIR_DATA + '/' + NPY_DATA).format(exchanger=exchanger, unit=unit, ty=ty)
-  return np.load(path)
+  data = np.load(path)
+  if nan is not None:
+    data[np.argwhere(np.isnan(data))] = nan
+  return data
 
 def savenpy(config, data, exchanger, unit, ty):
   DIR_DATA = config['train'].get('data.dir')
@@ -67,16 +70,32 @@ def savenpy(config, data, exchanger, unit, ty):
   path = (DIR_DATA + '/' + NPY_DATA).format(exchanger=exchanger, unit=unit, ty=ty)
   return np.save(path, data)
 
+def nanIn(x):
+  nans = np.argwhere(np.isnan(x))
+  if len(nans) == 0:
+    return None
+  else:
+    return nans
 
-def reportConfidence(config, longConf, shortConf, logger):
+def getDashboardIf(config, logger=None, login=True):
   AIMAI_DB_URI = config['aimai.db'].get('uri')
   USERNAME = config['aimai.db'].get('username')
   PASSWORD = config['aimai.db'].get('password')
   dashb = Dashboard(uri=AIMAI_DB_URI, logger=logger)
-  dashb.requestLogin(USERNAME, PASSWORD)
+  if login:
+    dashb.requestLogin(USERNAME, PASSWORD)
+  return dashb
+
+def reportConfidence(config, longConf, shortConf, logger):
+  dashb = getDashboardIf(config, logger=logger)
   now = datetime.datetime.now()
   status = Confidence.StatusNew
   dashb.saveConfidence(now, longConf, shortConf, status)
+
+def reportTrend(config, trend, logger):
+  dashb = getDashboardIf(config, logger=logger)
+  now = datetime.datetime.now()
+  dashb.saveTrend(now, trend)
 
 
 # ログファイル設定

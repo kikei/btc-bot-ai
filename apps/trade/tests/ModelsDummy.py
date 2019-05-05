@@ -10,6 +10,7 @@ def ModelsDummy():
   class Models(object):
     def __init__(self):
       self.Confidences = ConfidencesDummy()
+      self.TrendStrengths = TrendStrengthsDummy()
       self.Positions = PositionsDummy()
       self.Ticks = TicksDummy()
       self.Trades = TradesDummy()
@@ -22,6 +23,29 @@ def ModelsDummy():
     def save(self, confidence, accountId):
       self.collection[confidence.date] = confidence.toDict()
       return confidence
+
+  class TrendStrengthsDummy(object):
+    def __init__(self):
+      self.collection = {}
+
+    def save(self, strength, accountId):
+      self.collection[strength.date] = strength.toDict()
+      return strength
+
+    def all(self, before=None, after=None, count=None):
+      if before is None:
+        before = 1556600400 * 2
+      if after is None:
+        after = 0
+      r = []
+      for k in self.collection:
+        e = self.collection[k]
+        if after < e['timestamp'] < before:
+          r.append(TrendStrength.fromDict(e))
+          if count is not None:
+            count -= 1
+            if count == 0: break
+      return r
 
   class TicksDummy(object):
     def __init__(self):
@@ -56,9 +80,18 @@ def ModelsDummy():
     def __init__(self):
       self.collection = {}
     
-    def save(self, position):
+    def save(self, position, accountId):
       self.collection[position.date] = position.toDict()
       return position
+
+    def currentOpen(self, accountId):
+      r = []
+      for k in self.collection:
+        e = self.collection[k]
+        e = Position.fromDict(e)
+        if e.status == Position.StatusOpen:
+          r.append(e)
+      return r
   
   class ValuesDummy(object):
     def __init__(self):

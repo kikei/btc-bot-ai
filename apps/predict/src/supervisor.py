@@ -6,69 +6,23 @@ import matplotlib
 matplotlib.use("Agg")
 import matplotlib.pyplot as plt
 
-from charts import BollingerBand, Ichimoku
-from Plotter import Plotter
+from charts import RSI, BollingerBand, Ichimoku
+from dsp import lpfilter, crosszero
 from learningUtils import sigmoid, differentiate
-from utils import readConfig, getLogger, loadnpy, savenpy
+from utils import readConfig, getLogger, loadnpy, savenpy, nanIn
 
 logger = getLogger()
 config = readConfig('predict.ini')
 
 DIR_DATA = config['supervisor'].get('data.dir')
 EXCHANGERS = config['supervisor'].getlist('exchangers')
-UNITS = ['daily', 'hourly']
+UNITS = config['supervisor'].getlist('units')
 
 def load(exchanger, unit, ty):
   return loadnpy(config, exchanger, unit, ty)
 
 def save(data, exchanger, unit, ty):
   savenpy(config, data, exchanger, unit, ty)
-
-def lpfilter(size):
-  return np.full(size, 1.0 / size)
-
-def integral(v):
-  w = np.zeros(v.shape)
-  for i in range(0, len(v)):
-    if i == 0:
-      w[i] = v[i]
-    else:
-      w[i] = w[i-1] + v[i]
-  return w
-
-def pudding(z, a=0, b=0, k=1.):
-  """
-  Pudding function.
-  a: center.
-  b: size of ceil.
-  k: scale of x.
-  """
-  v = 1 / (1 + np.exp(k * (-z + a - b))) - 1 / (1 + np.exp(k * (-z + a + b)))
-  v = v / (np.max(v) - np.min(v)) # scale to 0 <= v <= 1
-  return v
-
-def crossZero(v, thres=0., ud=+1.0, du=-1.0):
-  w = np.zeros(v.shape)
-  udZero = None
-  duZero = None
-  for i in range(1, len(v)):
-    if v[i-1] > 0. and v[i] < 0.:
-      if thres != 0.:
-        udZero = i
-      else:
-        w[i] = ud
-    elif v[i-1] > -thres and v[i] < -thres and udZero is not None:
-      w[udZero] = ud
-      udZero = None
-    elif v[i-1] < 0. and v[i] > 0.:
-      if thres != 0.:
-        duZero = i
-      else:
-        w[duZero] = du
-    elif v[i-1] < thres and v[i] > thres and duZero is not None:
-      w[duZero] = du
-      duZero = None
-  return w
 
 def ranges(lst, f=lambda x:x, indexEnd=-1):
   indexStart = 0
@@ -81,46 +35,72 @@ def ranges(lst, f=lambda x:x, indexEnd=-1):
     lastKey = key
   yield {'start': indexStart, 'end': indexEnd, 'key': lastKey}
 
-def rectify(v, peeks):
+def rectify(v1, v2):
   """
   Returns new vector where local maximum and mimimum alternate with even ones.
-  v:     a base tick data.
-  peeks: peeks vector with +1(local maximum) and -1(local minimum).
+  v1: a base tick data.
+  v2: peeks vector with +1(local maximum) and -1(local minimum).
   """
-  k1 = [(k, +1) for k in np.where(peeks >= +1.)[0]]
-  k2 = [(k, -1) for k in np.where(peeks <= -1.)[0]]
-  k = sorted(k1 + k2, key=lambda a:a[0])
-  w = np.zeros(v.shape)
-  for r in ranges(k, indexEnd=len(v) - 1):
-    start = r['start']
-    end = r['end']
-    peek = r['key']
-    if peek == +1:
-      k = np.argmax(v[start:end+1]) + start
+  k1 = [(k, +1) for k in np.where(v2 >= +1.)[0]]
+  k2 = [(k, -1) for k in np.where(v2 <= -1.)[0]]
+  ks = sorted(k1 + k2, key=lambda a:a[0])
+  w = np.zeros(v1.shape)
+  rs = list(ranges(ks, indexEnd=len(v1)))
+  k = None
+  for i in range(0, len(rs)):
+    if k is None:
+      start = rs[i]['start']
     else:
-      k = np.argmin(v[start:end+1]) + start
+      start = k
+    end = rs[i]['end']
+    peek = rs[i]['key']
+    if peek == +1:
+      k = np.argmax(v1[start:end+1]) + start
+    else:
+      k = np.argmin(v1[start:end+1]) + start
     w[k] = peek
   return w
 
-def calcExpected(v, peeks,
-                 medium=0.125, width=0.05, decay=0.025, sharpness=2**10):
-  wInc = np.zeros(v.shape)
-  wDec = np.zeros(v.shape)
-  k = np.where(abs(peeks) >= +1.)[0]
-  offset = int(v[k[0]] < v[k[1]])
-  for w, offset in [(wDec, offset), (wInc, offset ^ 1)]:
-    for i in range(offset, len(k), 2):
-      if i >= len(k) - 1: break
-      kStart = k[i]
-      kEnd = k[i+1]
-      vStart = v[kStart]
-      vEnd = v[kEnd]
-      vCenter = vStart * (1. - medium) + vEnd * medium
-      vWidth = abs(vEnd - vStart) * width
-      confidence = pudding(v[kStart:kEnd], vCenter, vWidth, k=sharpness)
-      d = 1. - decay * integral(confidence)
-      w[kStart:kEnd] = np.clip(confidence * d, 0., 1.)
-  return wInc, wDec
+def easing(v, v2, minWidth):
+  def easing_(ks, i, minWidth, fkey=lambda xy:xy[0]):
+    while i + 1 < len(ks) and fkey(ks[i+1]) - fkey(ks[i]) < minWidth:
+      ks.pop(i+1)
+  ks = [(k, v2[k]) for k in np.where(np.abs(v2) >= 1.)[0]]
+  i = 0
+  while i < len(ks) - 1:
+    easing_(ks, i, minWidth)
+    i += 1
+  w = np.zeros(v.shape)
+  for k, v in ks:
+    w[k] = v
+  return w
+
+def trend(peeks):
+  t = np.zeros(peeks.shape)
+  k = peeks[np.where(peeks != 0)[0][-1]]
+  for i in range(0, peeks.shape[0]):
+    j = peeks.shape[0] - i - 1
+    if peeks[j] != 0:
+      k = peeks[j]
+    t[j] = k
+  return t
+
+def trendStrength(values, vt):
+  ks = [(k, vt[k]) for k in np.where(np.abs(vt) >= 1.)[0]]
+  w = np.array(values)
+  for i in range(0, len(ks) - 1):
+    k0, v0 = ks[i]
+    k1, v1 = ks[i+1]
+    if k0 + 1 == k1:
+      continue
+    v = values[k0+1:k1]
+    vmax = np.max(v)
+    vmin = np.min(v)
+    if v0 <= -1. and vmin < 0: # incremental trend
+      w[k0+1:k1] = (v - vmin) / (vmax - vmin) * vmax
+    elif v0 >= +1. and vmax > 0: # decremental trend
+      w[k0+1:k1] = (vmax - v) / (vmax - vmin) * vmin
+  return w
 
 def generateAnswer(v1, lpfs):
   """
@@ -139,28 +119,35 @@ def generateAnswer(v1, lpfs):
   # Smooth moving of derivative
   v5 = np.convolve(v4, lpf2, mode='same')
   # Find trend conversions
-  v6 = crossZero(v5, thres=5e-4)
+  v6 = crosszero(v5, thres=5e-4)
   # Find peeks; v2[p] is max, v2[q] is min | v7[p] = +1, v7[q] = -1
   v7 = rectify(v2, v6)
-  # Calculate continuouss expected value
-  v8_1, v8_2 = calcExpected(v2, v7, medium=0.15, width=0.15,
-                            decay=2e-3, sharpness=2**8)
-  return v8_1, v8_2
+  # Remove peeks close to another
+  v8 = easing(v2, v7, minWidth=24)
+  v9 = rectify(v2, v8)
+  #v10 = trend(v9)
+  v11 = RSI(v2, 23, slide=11) - 0.5
+  v12 = trendStrength(v11, v9)
+  v13 = np.power(v12 * 2, 2) * np.sign(v12) * 0.5 + 0.5
+  return {'Trend': v13}
 
 def getLPFiltersSize(unit):
   if unit == 'daily':
     return 7, 5
   elif unit == 'hourly':
     return 24, 12
-#   return 12, 7 # 0.5d, 0.5w
-#   return 86, 120 # 0.5w, 1M
 
 def runAnswer(values, exchanger, unit, ty):
   lpSize = getLPFiltersSize(unit)
   lpFilters = [lpfilter(size) for size in lpSize]
-  longs, shorts = generateAnswer(values, lpfs=lpFilters)
-  save(longs, exchanger, unit, ty + 'Long')
-  save(shorts, exchanger, unit, ty + 'Short')
+  # Period without data may be NaN
+  errorIndex = np.argwhere(np.isnan(values))
+  values[errorIndex] = 1.
+  answers = generateAnswer(values, lpfs=lpFilters)
+  for k in answers:
+    answer = answers[k]
+    answer[errorIndex] = 0.5
+    save(answer, exchanger, unit, ty + k)
 
 def runBollingerBand(values, exchanger, unit, ty):
   bb = BollingerBand(values, k=28)

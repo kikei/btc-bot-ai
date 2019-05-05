@@ -24,6 +24,7 @@ class Dashboard(object):
     self.uriTicks = uri + '/ticks'
     self.uriRefresh = uri + '/refresh'
     self.uriConfidences = uri + '/btctai/{accountId:}/confidences'
+    self.uriTrendStrength = uri + '/btctai/{accountId:}/trendStrength'
     self.accountId = None
     self.accessToken = None
     self.refreshToken = None
@@ -70,7 +71,7 @@ class Dashboard(object):
                       .format(status=r.status_code))
     elif r.status_code != requests.codes.ok:
       raise Exception('Failed to request, url={url}, status={status}'
-                      .format(url=url, status=r.status_code))
+                      .format(url=uri, status=r.status_code))
     else:
       return r
   
@@ -117,4 +118,19 @@ class Dashboard(object):
                       .format(status=r.status_code))
     body = r.json()
     return body
-
+  
+  def saveTrend(self, date, trend):
+    """
+    (self: Dashboard, date: datetime, trend: float) -> json: dict
+    """
+    url = self.uriTrendStrength.format(accountId=self.accountId)
+    payload = {
+      'timestamp': date.timestamp(),
+      'strength': trend
+    }
+    r = self.requestPrivate(url, payload=payload, request=requests.put)
+    if r.status_code != requests.codes.ok:
+      raise Exception('Failed to login, status={status}'
+                      .format(status=r.status_code))
+    body = r.json()
+    return body

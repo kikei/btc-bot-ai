@@ -4,7 +4,7 @@ from classes import PlayerActions
 from ActionsDispatcher import ActionsDispatcher, Action
 from monitors.AbstractMonitor import FinishMonitoring
 
-class PositionsPlayer(object):
+class TrendPlayer(object):
   """
   Connect actions creator and executor
   """
@@ -12,20 +12,24 @@ class PositionsPlayer(object):
     assert actionCreator is not None
     assert actionExecutor is not None
     self.models = models
+    self.executor = executor = actionExecutor
     self.actionCreator = actionCreator
-    self.actionExecutor = executor = actionExecutor
     self.accountId = accountId
     if logger is None:
       logger = logging.getLogger()
     self.logger = logger
+    # Setup dispatcher
     dispatcher = ActionsDispatcher()
     dispatcher.adds({
+      PlayerActions.OpenLong: executor.handleOpenLong,
+      PlayerActions.OpenShort: executor.handleOpenShort,
       PlayerActions.CloseForProfit: executor.handleClose,
       PlayerActions.CloseForLossCut: executor.handleClose,
       PlayerActions.Exit: lambda: FinishMonitoring.raiseEvent('Exit')
     })
     self.dispatcher = dispatcher
-  
+
   def run(self):
+    modles = self.models
     action = self.actionCreator.createAction()
     processed = self.dispatcher.dispatch(action)

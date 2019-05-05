@@ -47,7 +47,7 @@ class PositionsManager(object):
     tick = self.models.Ticks.one()
     for p in positions:
       onePosition = p.positions[0]
-      oneTick = tick[onePosition.exchanger]
+      oneTick = tick.exchanger(onePosition.exchanger)
       var = PositionsManager.calcVariation(oneTick, onePosition)
       if onePosition.side == OnePosition.SideLong:
         if var >= self.profitThres:
@@ -61,7 +61,11 @@ class PositionsManager(object):
           return [(PlayerActions.CloseForLossCut, p)] # Short, LossCut
     return []
   
-  def createAction(self, positions):
+  def getOpenPositions(self):
+    return self.models.Positions.currentOpen(accountId=self.accountId)
+  
+  def createAction(self):
+    positions = self.getOpenPositions()
     positions = filter(lambda p:p.isOpen(), positions)
     closes = self.makeDecision(positions)
     self.logger.debug('Completed decision, #close={n}.'.format(n=len(closes)))
