@@ -182,6 +182,35 @@ class Confidence(object):
     return text
 
 
+class TrendStrength(object):
+  
+  def __init__(self, date, strength):
+    self.date = date
+    self.strength = strength
+  
+  @staticmethod
+  def fromDict(obj):
+    if obj is None:
+      return None
+    date = datetime.datetime.fromtimestamp(obj['timestamp'])
+    trend = TrendStrength(date, obj['strength'])
+    return trend
+  
+  def toDict(self):
+    obj = {
+      'timestamp': self.date.timestamp(),
+      'strength': self.strength
+    }
+    return obj
+  
+  def __str__(self):
+    text = ('date={date}, strength={strength:.3f}'
+            .format(date=datetimeToStr(self.date),
+                    strength=self.strength))
+    text = 'TrendStrength(' + text + ')'
+    return text
+
+
 class Trade(object):
   def __init__(self, date, position):
     self.date = date
