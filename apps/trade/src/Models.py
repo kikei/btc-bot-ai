@@ -102,7 +102,7 @@ class Ticks(object):
       if tick.exchanger(e) is not None:
         t = tick.exchanger(e)
         result = self.collections[e].replace_one({'datetime': t.date},
-                                                 t.to_dict(), upsert=True)
+                                                 t.toDict(), upsert=True)
         if result.matched_count != 0:
           results[e] = t
     return results
