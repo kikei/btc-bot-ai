@@ -118,6 +118,14 @@ class Ticks(object):
 
 class Values(object):
   Enabled = 'monitor.enabled'
+  AdjusterStep = 'adjuster.step'
+  AdjusterStop = 'adjuster.stop'
+  AdjusterSpeed = 'adjuster.speed'
+  AdjusterLastDirection = 'adjuster.direction'
+  AdjusterThresConf = 'adjuster.confidence.thres'
+  AdjusterLotMin = 'adjuster.lot.min'
+  AdjusterLotInit = 'adjuster.lot.init'
+  AdjusterLotDecay = 'adjuster.lot.decay'
   PositionThresProfit = 'position.profit.thres'
   PositionThresLossCut = 'position.losscut.thres'
   OperatorLastFired = 'operator.fired.last'
@@ -129,6 +137,14 @@ class Values(object):
   OperatorLotInit = 'operator.lot.init'
   AllKeys = [
     Enabled,
+    AdjusterStep,
+    AdjusterStop,
+    AdjusterSpeed,
+    AdjusterLastDirection,
+    AdjusterThresConf,
+    AdjusterLotMin,
+    AdjusterLotInit,
+    AdjusterLotDecay,
     OperatorLastFired,
     OperatorSleepDuration,
     OperatorTrendStrengthLoad,
@@ -141,6 +157,14 @@ class Values(object):
   ]
   AllTypes = {
     Enabled: 'boolean',
+    AdjusterStep: 'float',
+    AdjusterStop: 'float',
+    AdjusterSpeed: 'float',
+    AdjusterLastDirection: 'int',
+    AdjusterThresConf: 'float',
+    AdjusterLotMin: 'float',
+    AdjusterLotInit: 'float',
+    AdjusterLotDecay: 'float',
     OperatorLastFired: 'float',
     OperatorSleepDuration: 'float',
     OperatorTrendStrengthLoad: 'int',
