@@ -268,9 +268,13 @@ class OneTick(object):
     one = OneTick(obj['ask'], obj['bid'], date)
     return one
   
-  def toDict(self):
+  def toDict(self, dateInString=False):
+    if dateInString:
+      date = datetimeToStr(self.date.timestring())
+    else:
+      date = self.date.timestamp()
     obj = {
-      'datetime': self.date.timestamp(),
+      'datetime': date,
       'ask': self.ask,
       'bid': self.bid
     }

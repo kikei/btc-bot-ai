@@ -5,13 +5,13 @@ import pymongo
 from classes import Tick, OneTick, OnePosition, Confidence, TrendStrength, Trade, Position, datetimeToStr
 
 class Models(object):
-    def __init__(self, dbs):
+    def __init__(self, dbs, saveTickDateInString=False):
       btctai_db = dbs.btctai_db
       tick_db = dbs.tick_db
       self.Values = Values(btctai_db)
       self.Confidences = Confidences(btctai_db)
       self.TrendStrengths = TrendStrengths(btctai_db)
-      self.Ticks = Ticks(tick_db)
+      self.Ticks = Ticks(tick_db, saveDateInString=saveTickDateInString)
       self.Trades = Trades(btctai_db)
       self.Positions = Positions(btctai_db)
 
@@ -35,12 +35,13 @@ class Models(object):
 
 
 class Ticks(object):
-  def __init__(self, db):
+  def __init__(self, db, saveDateInString=False):
     self.db = db
     self.collections = {
       Tick.BitFlyer: self.db.tick_bitflyer,
       Tick.Quoine: self.db.tick_quoine
     }
+    self.saveDateInString = saveDateInString
 
   def setup(self):
     for k, collection in self.collections:
@@ -74,13 +75,19 @@ class Ticks(object):
     collections = [self.collections[e] for e in exchangers]
     conditions = []
     if start is not None:
-      dateStart = datetime.datetime.fromtimestamp(start)
-      dateStart = datetimeToStr(dateStart)
-      conditions.append({'datetime': {'$gt': dateStart}})
+      if self.saveDateInString:
+        dateStart = datetime.datetime.fromtimestamp(start)
+        dateStart = datetimeToStr(dateStart)
+        conditions.append({'datetime': {'$gt': dateStart}})
+      else:
+        conditions.append({'datetime': {'$gt': start}})
     if end is not None:
-      dateEnd = datetime.datetime.fromtimestamp(end)
-      dateEnd = datetimeToStr(dateEnd)
-      conditions.append({'datetime': {'$lt': dateEnd}})
+      if self.saveDateInString:
+        dateEnd = datetime.datetime.fromtimestamp(end)
+        dateEnd = datetimeToStr(dateEnd)
+        conditions.append({'datetime': {'$lt': dateEnd}})
+      else:
+        conditions.append({'datetime': {'$lt': end}})
     if len(conditions) > 0:
       curs = [c.find({'$and': conditions}) for c in collections]
     else:
@@ -101,8 +108,9 @@ class Ticks(object):
     for e in exchangers:
       if tick.exchanger(e) is not None:
         t = tick.exchanger(e)
-        result = self.collections[e].replace_one({'datetime': t.date},
-                                                 t.toDict(), upsert=True)
+        obj = t.toDict(dateInString=self.saveDateInString)
+        result = self.collections[e].replace_one({'datetime': obj['datetime']},
+                                                 obj, upsert=True)
         if result.matched_count != 0:
           results[e] = t
     return results
