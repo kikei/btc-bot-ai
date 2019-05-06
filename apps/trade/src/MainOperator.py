@@ -27,7 +27,7 @@ class MainOperator(object):
       Values.OperatorTrendStrengthLoad
     ]
     for k in required:
-      value = self.getStoredValue(Values.OperatorSleepDuration)
+      value = self.getStoredValue(k)
       if value is None:
         msg = 'Setting "{k}" not initialized.'.format(k=k)
         raise MainOperatorDBException(msg)
@@ -42,7 +42,8 @@ class MainOperator(object):
     durationRead = self.getStoredValue(Values.OperatorTrendStrengthLoad)
     now = datetime.datetime.now()
     after = now.timestamp() - durationRead
-    values = self.models.TrendStrengths.all(after=after)
+    values = self.models.TrendStrengths.all(after=after,
+                                            accountId=self.accountId)
     return values
   
   def getOpenPositions(self):

@@ -315,7 +315,7 @@ class TrendStrengths(object):
     cur = self.collection.find(conditions).sort('timestamp', -1)
     if count is not None:
       cur = cur.limit(count)
-    return (TrendStrength.fromDict(i) for i in cur)
+    return [TrendStrength.fromDict(i) for i in cur]
   
   def save(self, trendStrength, accountId):
     """

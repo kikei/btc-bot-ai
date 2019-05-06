@@ -30,7 +30,7 @@ class TrendMonitor(AbstractMonitor):
   def handleEntry(self, entry):
     if entry is not None and \
        (self.lastEntry is None or self.lastEntry < entry.date):
-      self.logger.info('New trend entry received, entry={e}.'.format(entry))
+      self.logger.info('New trend entry received, entry={e}.'.format(e=entry))
       self.player.run()
     else:
       self.logger.debug('No new entry.')
