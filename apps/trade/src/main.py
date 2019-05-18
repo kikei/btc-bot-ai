@@ -22,6 +22,7 @@ from TrendPlayer import TrendPlayer
 from PositionsPlayer import PositionsPlayer
 from PositionsManager import PositionsManager
 from TradeExecutor import TradeExecutor
+from NothingExecutor import NothingExecutor
 
 def getMongoAddress(host=None, port=None, user=None, password=None):
   # mongodb://{user}:{password}@{host}:{port}
@@ -74,6 +75,7 @@ def checkProperties():
 def defaultTrendMonitor(models, accountId, logger=None):
   creator = MainOperator(models, accountId=accountId, logger=logger)
   executor = TradeExecutor(models, accountId=accountId, logger=logger)
+  #executor = NothingExecutor(models, accountId=accountId, logger=logger)
   player = TrendPlayer(models, accountId=accountId, logger=logger,
                        actionCreator=creator, actionExecutor=executor)
   return TrendMonitor(models, accountId=accountId, loop=False, logger=logger,
