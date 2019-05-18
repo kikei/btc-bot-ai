@@ -134,6 +134,7 @@ class Values(object):
   OperatorTrendWidth = 'operator.trend.width'
   OperatorTrendGradient = 'operator.trend.gradient'
   OperatorTrendSize = 'operator.trend.size'
+  OperatorPositionsMax = 'operator.positions.max'
   OperatorLotInit = 'operator.lot.init'
   AllKeys = [
     Enabled,
@@ -151,6 +152,7 @@ class Values(object):
     OperatorTrendWidth,
     OperatorTrendGradient,
     OperatorTrendSize,
+    OperatorPositionsMax,
     OperatorLotInit,
     PositionThresProfit,
     PositionThresLossCut
@@ -171,6 +173,7 @@ class Values(object):
     OperatorTrendWidth: 'int',
     OperatorTrendGradient: 'float',
     OperatorTrendSize: 'int',
+    OperatorPositionsMax: 'int',
     OperatorLotInit: 'float',
     PositionThresProfit: 'float',
     PositionThresLossCut: 'float'
