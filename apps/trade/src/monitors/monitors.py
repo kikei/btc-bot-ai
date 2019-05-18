@@ -8,7 +8,7 @@ class PositionsMonitor(AbstractMonitor):
   def handleEntry(self, entry):
     if len(entry) > 0:
       self.logger.info('Open positions exists, #p={n}.'
-                       .format(n=len(positions)))
+                       .format(n=len(entry)))
       self.player.run()
     else:
       self.logger.debug('No opening position.')
