@@ -4,3 +4,4 @@ pytest
 python-dateutil
 requests
 slack_log_handler
+python-binance

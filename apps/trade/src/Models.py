@@ -39,7 +39,9 @@ class Ticks(object):
     self.db = db
     self.collections = {
       Tick.BitFlyer: self.db.tick_bitflyer,
-      Tick.Quoine: self.db.tick_quoine
+      Tick.Quoine: self.db.tick_quoine,
+      Tick.BinanceETHBTC: self.db.tick_binance_ethbtc,
+      Tick.BinanceXRPBTC: self.db.tick_binance_xrpbtc
     }
     self.saveDateInString = saveDateInString
 

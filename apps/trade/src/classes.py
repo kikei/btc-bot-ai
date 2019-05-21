@@ -288,6 +288,8 @@ class OneTick(object):
 class Tick(object):
   BitFlyer = 'bitflyer'
   Quoine = 'quoine'
+  BinanceETHBTC = 'binance_ethbtc'
+  BinanceXRPBTC = 'binance_xrpbtc'
   
   def __init__(self, ticks):
     self.ticks = ticks
@@ -300,7 +302,7 @@ class Tick(object):
 
   @staticmethod
   def exchangers():
-    return [Tick.BitFlyer, Tick.Quoine]
+    return [Tick.BitFlyer, Tick.Quoine, Tick.BinanceETHBTC, Tick.BinanceXRPBTC]
 
   def toDict(self):
     d = {}
