@@ -65,7 +65,7 @@ class Ticks(object):
         result[e] = None
       else:
         result[e] = OneTick.fromDict(t)
-    return result
+    return Tick(result)
 
   def all(self, exchangers=None, start=None, end=None, limit=10, order=-1):
     """
