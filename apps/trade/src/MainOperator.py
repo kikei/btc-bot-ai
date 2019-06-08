@@ -135,16 +135,16 @@ class MainOperator(object):
                       .format(f=f, f0=f0, f1=f1))
     chance = None
     if f[0] > minGradient and f0 < 0 and f1 > 0:
-      self.logger.warn('Decision is +1(long), ' +
-                       'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
-                       .format(f=f, f0=f0, f1=f1,
-                               e=', '.join(map(str, entries))))
+      self.logger.warning('Decision is +1(long), ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
       chance = +1
     if f[0] < -minGradient and f0 > 0 and f1 < 0:
-      self.logger.warn('Decision is -1(down), ' +
-                       'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
-                       .format(f=f, f0=f0, f1=f1,
-                               e=', '.join(map(str, entries))))
+      self.logger.warning('Decision is -1(down), ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
       chance = -1
     if chance is None: return 0
     if not self.checkPositionsCount(chance): return 0
@@ -200,6 +200,6 @@ class MainOperator(object):
       return None
     action = self.getAction()
     if action is not None:
-      self.logger.warn('New action created, action={a}.'.format(a=action))
+      self.logger.warning('New action created, action={a}.'.format(a=action))
       self.updateLastFired()
     return action

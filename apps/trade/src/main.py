@@ -49,7 +49,7 @@ def getDBInstance(host=None, port=None):
 
 def getModels(client):
   saveTickDateInString = Properties.SAVE_TICKDATE_IN_STRING
-  models = Models(client)
+  models = Models(client, saveTickDateInString=saveTickDateInString)
   return models
 
 
