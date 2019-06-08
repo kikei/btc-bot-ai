@@ -136,11 +136,3 @@ yTrend = ybhPred[-1].item()
 logger.debug('Registering trend={trend:.3f}.'.format(trend=yTrend))
 reportTrend(config, yTrend, logger)
 logger.debug('End registering.')
-
-logger.debug('Start registering for aimai.xaxxi.net.')
-config['aimai.db']['uri'] = 'https://aimai.xaxxi.net'
-config['aimai.db']['username'] =  'fujii'
-config['aimai.db']['password'] =  'qrotouiupupp'
-logger.debug('Registering trend={trend:.3f}.'.format(trend=yTrend))
-reportTrend(config, yTrend, logger)
-logger.debug('End registering.')
