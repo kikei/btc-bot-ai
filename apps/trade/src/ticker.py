@@ -83,7 +83,8 @@ def main():
   entries = [
     (Tick.BinanceETHBTC, lambda: markets.Binance.get_tick('ETHBTC')),
     (Tick.BinanceXRPBTC, lambda: markets.Binance.get_tick('XRPBTC')),
-    (Tick.BitFlyer, markets.BitFlyer.get_tick),
+    (Tick.BitFlyer, lambda: markets.BitFlyer.get_tick('FX_BTC_JPY')),
+    (Tick.BitFlyerETHBTC, lambda: markets.BitFlyer.get_tick('ETH_BTC')),
     (Tick.Quoine, markets.Quoine.get_tick)
   ]
   options = {

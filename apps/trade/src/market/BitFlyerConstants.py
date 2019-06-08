@@ -8,7 +8,7 @@ ORDER_IGNORE_TIMEOUT = False
 RETRY_API_CALL = 30
 
 API_URI = 'https://api.bitflyer.jp'
-API_PATH_BOARD = '/v1/getboard?product_code=FX_BTC_JPY'
+API_PATH_BOARD = '/v1/getboard?product_code={product_code}'
 API_PATH_BALANCE = '/v1/me/getbalance'
 API_PATH_COLLATERAL = '/v1/me/getcollateral'
 API_PATH_POSITIONS = '/v1/me/getpositions?product_code=FX_BTC_JPY'

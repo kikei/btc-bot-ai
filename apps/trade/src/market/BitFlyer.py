@@ -108,10 +108,11 @@ class BitFlyer(object):
     except json.JSONDecodeError as e:
       raise BitFlyerAPIError('api response parse error, path={}'.format(path))
     
-  def get_tick(self):
+  def get_tick(self, code='FX_BTC_JPY'):
     self.logger.debug('Fetching BitFlyer tick.')
     try:
-      board = self.call_json_api('GET', API_PATH_BOARD)
+      path = API_PATH_BOARD.format(product_code=code)
+      board = self.call_json_api('GET', path)
     except BitFlyerAPIError as e:
       self.logger.warning('Failed to fetch BitFlyer tick, API error={e}'
                           .format(e=e))

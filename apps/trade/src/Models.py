@@ -39,6 +39,7 @@ class Ticks(object):
     self.db = db
     self.collections = {
       Tick.BitFlyer: self.db.tick_bitflyer,
+      Tick.BitFlyerETHBTC: self.db.tick_bitflyer_ethbtc,
       Tick.Quoine: self.db.tick_quoine,
       Tick.BinanceETHBTC: self.db.tick_binance_ethbtc,
       Tick.BinanceXRPBTC: self.db.tick_binance_xrpbtc
