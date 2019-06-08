@@ -133,5 +133,6 @@ class TradeExecutor(object):
                         .format(t=str(trade), p=position))
       return False
     # Update DB
-    self.logger.warning('Successfully closed, trade={t}'.format(t=trade))
+    self.logger.warning('Successfully closed, trade={t}'
+                        .format(t=', '.join(map(str, trade))))
     return True
