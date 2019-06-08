@@ -175,13 +175,13 @@ class MainOperator(object):
     if chance == +1 and len(shorts) > 0:
       self.logger.info('Action is CloseForProfit, ' +
                        'chance={c}, position={p}, #short={n}'
-                       .format(c=chance, p=shorts[0], n=len(shorts)))
-      return Action(PlayerActions.CloseForProfit, shorts[0])
+                       .format(c=chance, p=shorts[-1], n=len(shorts)))
+      return Action(PlayerActions.CloseForProfit, shorts[-1])
     elif chance == -1 and len(longs) > 0:
       self.logger.info('Action is CloseForProfit, ' +
                        'chance={c}, position={p}, #long={n}'
-                       .format(c=chance, p=longs[0], n=len(longs)))
-      return Action(PlayerActions.CloseForProfit, longs[0])
+                       .format(c=chance, p=longs[-1], n=len(longs)))
+      return Action(PlayerActions.CloseForProfit, longs[-1])
     # Open new position
     lot = self.calculateLot(entries=entries, chance=chance,
                             longs=longs, shorts=shorts)
