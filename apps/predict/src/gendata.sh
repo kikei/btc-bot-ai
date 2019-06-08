@@ -72,18 +72,18 @@ fi
 
 while [ $# != 0 ]; do
     case $1 in
-    sync)
+    s*)
         sync
         summarize
         exprt
         supervise
         shift 1
         ;;
-    learn)
+    l*)
         train
         shift 1
         ;;
-    predict)
+    p*)
         predict
         shift 1
         ;;

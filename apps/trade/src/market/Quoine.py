@@ -1,11 +1,8 @@
 import logging
 
 import datetime
-import dateutil.parser
 import json
 import jwt
-import os
-import sys
 import time
 import requests
 
@@ -31,16 +28,11 @@ class Quoine(object):
             logger = logging.getLogger()
         self.logger = logger
         self.name = Tick.Quoine
-        self.logger.debug("Quoine.__init__処理開始")
-
         now = datetime.datetime.now()
         self.starttime = time.mktime(now.timetuple())
-
         # For Authentication
         self.user_id = user_id
         self.user_secret = user_secret
-        
-        self.logger.debug("Quoine.__init__処理完了")
 
     # def get_default_tick(self):
     #     return self.tick_default_return_value.copy()
@@ -63,8 +55,9 @@ class Quoine(object):
 
     def call_api(self, method, path, data=None):
       for c in range(0, RETRY_API_CALL):
-        self.logger.debug('Quoine API 実行開始, retry={}/{}, path={}'
-                          .format(c + 1, RETRY_API_CALL, path))
+        self.logger.debug(('Calling Quoine API, ' +
+                           'retry={count}/{retry}, path={path}')
+                          .format(count=c + 1, retry=RETRY_API_CALL, path=path))
         uri = API_URI + path
         headers = self.get_headers(path, self.user_id, self.user_secret)
         try:
@@ -116,11 +109,12 @@ class Quoine(object):
         raise QuoineAPIError('api response parse error, path={}'.format(path))
             
     def get_tick(self):
-      self.logger.debug("Quoine Tick取得開始")
+      self.logger.debug("Fetching Quoine tick.")
       try:
         board = self.call_json_api('GET', API_PATH_BOARD)
       except QuoineAPIError as e:
-        self.logger.warn('Quoine Tick取得失敗, APIエラー')
+        self.logger.warn('Failed to fetch Quoine tick, API error={e}'
+                         .format(e=e))
         return None
       ask_levels = board[BOARD_SIDE_ASK]
       bid_levels = board[BOARD_SIDE_BID]
@@ -145,8 +139,8 @@ class Quoine(object):
       if price_bid is None:
         price_bid, amount = bid_levels[-1]
             
-      self.logger.debug('Quoine Tick取得完了, ask={}, bid={}'
-                        .format(price_ask, price_bid))
+      self.logger.debug('Completed fetching Quoine tick, ask={ask}, bid={bid}'
+                        .format(ask=price_ask, bid=price_bid))
       return OneTick(price_ask, price_bid)
             
     def get_balance(self):
@@ -156,11 +150,12 @@ class Quoine(object):
       Refer:
       [Get all Account Balances](https://developers.quoine.com/#get-all-account-balances)
       """
-      self.logger.debug('Quoine Balance取得開始')
+      self.logger.debug('Fetching Quoine balance information.')
       try:
         balances = self.call_json_api('GET', API_PATH_BALANCE)
       except QuoineAPIError as e:
-        self.logger.warn('Quoine Balance取得失敗, APIエラー')
+        self.logger.warn('Failed to fetch Quoine balance information, e={e}.'
+                         .format(e=e))
         return None
       jpy = None
       btc = None
@@ -171,11 +166,13 @@ class Quoine(object):
         elif currency_code == BALANCE_CURRENCY_1:
           btc = float(b[BALANCE_VALUE])
       if jpy is None or btc is None:
-        self.logger.warn('Quoine Balance取得失敗, JPY={}, BTC={}'
-                         .format(jpy, btc))
+        self.logger.warn(('Failed to fetch Quoine balance information, ' +
+                          'JPY={jpy}, BTC={btc}.')
+                         .format(jpy=jpy, btc=btc))
         return None
-      self.logger.info('Quoine Balance取得完了, JPY={:.1f}, BTC={:.1f}'
-                       .format(jpy, btc))
+      self.logger.info(('Completed fetcing Quoine balance information, ' +
+                        'JPY={jpy:.1f}, BTC={btc:.1f}.')
+                       .format(jpy=jpy, btc=btc))
       return Balance(jpy=jpy, btc=btc)
 
     def get_account(self, product_id=5):
@@ -203,11 +200,13 @@ class Quoine(object):
         'margin': '97398.06806'         # 使用中証拠金
       }
       """
-      self.logger.debug('Quoine Trading Account情報取得開始')
+      self.logger.debug('Fetching Quoine account information.')
       try:
         accs = self.call_json_api('GET', API_PATH_ACCOUNT)
       except QuoineAPIError as e:
-        self.logger.warn('Quoine Trading Account情報取得失敗, APIエラー')
+        self.logger.warn(('Failed to fetch Quoine account information. ' +
+                          'API error={e}.')
+                         .format(e=e))
         return None
       for acc in accs:
         if acc[ACCOUNT_PRODUCT_ID] == product_id:
@@ -220,10 +219,12 @@ class Quoine(object):
           else:
             keeprate = acc[ACCOUNT_EQUITY] / acc[ACCOUNT_MARGIN]
           acc[ACCOUNT_KEEPRATE] = 100.0 * keeprate
-          self.logger.info('Quoine Trading Account情報取得完了, account={}'
-                           .format(acc))
+          self.logger.info(('Completed fetching Quoine account information, ' +
+                            'account={a}')
+                           .format(a=acc))
           return acc
-      self.logger.debug('Quoine Trading Account取得失敗, product_id該当無し')
+      self.logger.debug('Failed to fetch Quoine account information, ' +
+                        'no product_id')
       return None
 
     def get_net_asset(self):
@@ -237,25 +238,28 @@ class Quoine(object):
       Refer:
       [3.4. List Orders](https://developers.quoine.com/v1.html#3.4.-list-orders)
       """
-      self.logger.info('Quoine order list 取得開始')
+      self.logger.info('Fetching order list of Quoine.')
       try:
         orders = self.call_json_api('GET', API_PATH_LIST_ORDERS)
       except QuoineAPIError as e:
-        self.logger.warn('Quoine order list 取得失敗, APIエラー')
+        self.logger.warn('Failed to fetch order list of Quoine, API error={e}.'
+                         .format(e=e))
         return None
       models = orders[ORDER_MODELS]
-      self.logger.info('Quoine order list 取得完了, orders={}'.format(models))
+      self.logger.info('Completed fetching order list of Quoine, orders={o}.'
+                       .format(o=models))
       return models
 
     def get_executions(self):
-      self.logger.warn('Quoine executions 取得開始')
+      self.logger.warn('Fetching Quoine executions.')
       try:
         executions = self.call_json_api('GET', API_PATH_EXECUTIONS)
       except QuoineAPIError as e:
-        self.logger.warn('Quoine executions 取得失敗, APIエラー')
+        self.logger.warn('Failed to fetch Quoine executions, API error={e}.'
+                         .format(e=e))
         return None
-      self.logger.warn('Quoine executions 取得成功, excutions={}'
-                       .format(executions))
+      self.logger.warn('Completed to fetch Quoine executions, excutions={e}'
+                       .format(e=executions))
       return executions
 
     def get_trades(self, limit=100, status=None):
@@ -307,15 +311,16 @@ class Quoine(object):
       if len(params) > 0:
         path = '{}?{}'.format(path, '&'.join(params))
         
-      self.logger.info('Quoine trades 取得開始')
+      self.logger.info('Fetching Quoine trades.')
       try:
         trades = self.call_json_api('GET', path)
       except QuoineAPIError as e:
-        self.logger.error('Quoine trades 取得失敗, APIエラー')
+        self.logger.error('Failed to fetch Quoine trades, API error={e}.'
+                          .format(e=e))
         return None
       models = trades['models']
-      self.logger.info('Quoine trades 取得完了, trades={}'
-                       .format(models))
+      self.logger.info('Completed fetching Quoine trades, trades={t}.'
+                       .format(t=models))
       return models
 
     def get_trade_by_id(self, order_id):
@@ -365,13 +370,15 @@ class Quoine(object):
         'funding_currency': ORDER_FUNDING_CURRENCY
       }
       data = json.dumps({'order': order})
-      self.logger.info('Quoine オーダー開始, data={}'.format(data))
+      self.logger.info('Requesting order for Quoine, data={d}.'.format(d=data))
       try:
         result = self.call_json_api('POST', API_PATH_ORDERS, data)
       except QuoineAPIError as e:
-        self.logger.info('Quoine オーダー失敗, e={}'.format(e))
+        self.logger.info('Failed to request order for Quoine, API error={e}.'
+                         .format(e=e))
         return None
-      self.logger.info('Quoine オーダー完了, result={}'.format(result))
+      self.logger.info('Completed to request order for Quoine, result={r}.'
+                       .format(r=result))
       return result
 
     def wait_last_order_executed(self):
@@ -383,13 +390,14 @@ class Quoine(object):
         time.sleep(ORDER_EXECUTED_RETRY_INTERVAL)
         orders = self.get_orders()
         if orders is not None and len(orders) > 0:
-          self.logger.info('Quoine オーダー執行待ち retry={}/{}, #orders={}'
-                           .format(c, ORDER_EXECUTED_RETRY,len(orders)))
+          self.logger.info(('Waiting order executed in Quoine, ' +
+                            'retry={c}/{r}, #orders={n}.')
+                           .format(c=c, r=ORDER_EXECUTED_RETRY, n=len(orders)))
           continue
-        self.logger.info('Quoine オーダーは執行されました')
+        self.logger.info('Order for Quoine executed.')
         return True
-      self.logger.info('Quoine オーダーは執行されませんでした, retry={}/{}'
-                       .format(c, ORDER_EXECUTED_RETRY))
+      self.logger.info('Failed to execute order in Quoine, retry={c}/{r}.'
+                       .format(c=c, r=ORDER_EXECUTED_RETRY))
       return False
 
     def get_last_order(self, starttime):
@@ -397,22 +405,25 @@ class Quoine(object):
         time.sleep(ORDER_EXECUTED_RETRY_INTERVAL)
         trades = self.get_trades()
         if trades is None:
-          self.logger.info('Quoine オーダー結果取得待ち retry={}/{}'
-                           .format(c, ORDER_EXECUTED_RETRY))
+          self.logger.info(('Waiting result of the last order for Quoine, ' +
+                            'retry={c}/{r}.')
+                           .format(c=c, r=ORDER_EXECUTED_RETRY))
           continue
         trades = self.filter_closed(trades, starttime)
-        self.logger.debug('Quoine trades={}'.format(trades))
+        self.logger.debug('Fetched trades for Quoine trades={t}.'
+                          .format(t=trades))
         if len(trades) == 0:
-          self.logger.info('Quoine オーダー結果取得待ち retry={}/{}, #orders={}'
-                           .format(c, ORDER_EXECUTED_RETRY,len(trades)))
+          self.logger.info(('Waiting result of the last order for Quoine, ' +
+                            'retry={c}/{r}, #orders={n}.')
+                           .format(c=c, r=ORDER_EXECUTED_RETRY, n=len(trades)))
           continue
-        self.logger.info('Quoine オーダー結果取得されました')
+        self.logger.info('Completed to fetch result of the order for Quoine.')
         sizes = [float(e['quantity']) for e in trades]
         prices = [float(e['open_price']) for e in trades]
         ids = [e['id'] for e in trades]
         position = OnePosition(sizes, prices, ids, trades[0]['side'])
         return position
-      self.logger.error('Quoine オーダー結果取得に失敗しました')
+      self.logger.error('Failed to fetch result of the last order for Quoine.')
       return None
         
     def open_position(self, side, price, size):
@@ -429,19 +440,19 @@ class Quoine(object):
         ids    : [int]
       }
       """
-      self.logger.debug(('Quoine オープンオーダー開始, ' +
-                         'side={}, price={}, size={}'
-                         .format(side, price,size)))
+      self.logger.debug(('Fetching open orders for Quoine, ' +
+                         'side={s}, price={p}, size={z}.')
+                         .format(s=side, p=price, z=size))
       now = datetime.datetime.now()
       starttime = time.mktime(now.timetuple())
       self.create_order(side, price, size)
       executed = self.wait_last_order_executed()
       if not executed:
-        self.logger.warn('Quoine オーダーは執行されませんでした')
+        self.logger.warn('The last order for Quoine was not executed.')
         if not ORDER_IGNORE_TIMEOUT:
-          self.logger.info('Quoineオーダーは執行されたとみなし処理を続行')
+          self.logger.info('The last order might fail, but we continue task.')
         else:
-          self.logger.warn('Quoineの発注処理に失敗しました')
+          self.logger.warn('Failed to order for Quoine.')
           return None
       position = self.get_last_order(starttime)
       return position
@@ -455,7 +466,8 @@ class Quoine(object):
       Refer:
       [Close a trade](https://developers.quoine.com/#close-a-trade)
       """
-      self.logger.debug("Quoine 決済処理開始, targets={}".format(position))
+      self.logger.debug("Closing position on Quoine, positions={p}."
+                        .format(p=position))
 
       closed_ids = []
       for position_id in position.ids:
@@ -463,8 +475,8 @@ class Quoine(object):
         try:
           closeqn = self.call_api('POST', path)
         except QuoineAPIError as e:
-          self.logger.warn('Quoine 決済処理失敗, id={}, e={}'
-                           .format(position_id, e))
+          self.logger.warn('Failed to close position on Quoine, id={id}, e={e}.'
+                           .format(id=position_id, e=e))
           continue
         closed_ids.append(position_id)
       
@@ -473,14 +485,15 @@ class Quoine(object):
         try:
           trade = self.get_trade_by_id(position_id)
         except QuoineAPIError as e:
-          self.logger.warn("Quoine 決済処理失敗, e={}".format(e))
+          self.logger.warn('Failed to close position on Quoine, API error={e}.'
+                           .format(e=e))
           continue
           
         if trade is not None and trade['status'] == 'closed':
-          self.logger.info("Quoine 決済処理が正常に完了しました。")
+          self.logger.info('Completed to close position on Quoine.')
         else:
-          self.logger.error("Quoine 決済処理エラーかもしれません, " +
-                            "手動で建て玉の解消をしてください, " +
-                            "id={}, trade={}"
-                            .format(position_id, trade))
+          self.logger.error(('It might failed to close position on Quoine, ' +
+                             'close it manually if you need.' + 
+                             'id={id}, trade={t}.')
+                            .format(id=position_id, t=trade))
       return True

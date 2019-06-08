@@ -11,28 +11,44 @@ import pymongo
 CWD = os.path.dirname(os.path.abspath(__file__))
 sys.path.append(os.path.join(CWD, '..', 'conf'))
 
-from monitors.AbstractListener import AbstractListener
-from monitors.monitors import ConfidenceMonitor, PositionMonitor
+from monitors.monitors import TrendMonitor, PositionsMonitor
 
 import Properties
 
 from classes import Confidence
 from Models import Models
-from TradingPlayer import TradingPlayer
+from MainOperator import MainOperator
+from TrendPlayer import TrendPlayer
 from PositionsPlayer import PositionsPlayer
 from PositionsManager import PositionsManager
 from TradeExecutor import TradeExecutor
+from NothingExecutor import NothingExecutor
+
+def getMongoAddress(host=None, port=None, user=None, password=None):
+  # mongodb://{user}:{password}@{host}:{port}
+  server = 'mongodb://'
+  if user is not None:
+    server += user
+    if password is not None:
+      server += ':{password}'.format(password=password)
+    server += '@'
+  server += host
+  if port is not None:
+    server += ':{port}'.format(port=port)
+  return server
 
 def getDBInstance(host=None, port=None):
-  if host is None:
-    host = Properties.MONGO_HOST
-  if port is None:
-    port = Properties.MONGO_PORT
-  client = pymongo.MongoClient(host=host, port=port)
+  user = Properties.MONGO_USER
+  password = Properties.MONGO_PASSWORD
+  host = Properties.MONGO_HOST or '127.0.0.1'
+  port  = Properties.MONGO_PORT
+  address = getMongoAddress(host, port, user, password)
+  client = pymongo.MongoClient(host=address)
   return client
 
 
 def getModels(client):
+  saveTickDateInString = Properties.SAVE_TICKDATE_IN_STRING
   models = Models(client)
   return models
 
@@ -56,66 +72,32 @@ def checkProperties():
     return False
   return True
 
+def defaultTrendMonitor(models, accountId, logger=None):
+  creator = MainOperator(models, accountId=accountId, logger=logger)
+  executor = TradeExecutor(models, accountId=accountId, logger=logger)
+  #executor = NothingExecutor(models, accountId=accountId, logger=logger)
+  player = TrendPlayer(models, accountId=accountId, logger=logger,
+                       actionCreator=creator, actionExecutor=executor)
+  return TrendMonitor(models, accountId=accountId, loop=False, logger=logger,
+                      player=player)
 
-class ConfidenceListener(object):
-  def __init__(self, models, accountId, Player=None, logger=None):
-    if logger is None:
-      logger = logging.getLogger()
-    self.logger = logger
-    if Player is None:
-      Player = TradingPlayer
-    self.player = Player(models, accountId=accountId, logger=logger)
-  
-  def handleEntry(self, confidence):
-    expirePredict = datetime.timedelta(hours=1)
-    now = datetime.datetime.now()
-    if confidence is not None and \
-       confidence.isStatusOf(Confidence.StatusNew) and \
-       now - confidence.date < expirePredict:
-      self.logger.info('New confidence received, confidence={confidence}.'
-                       .format(confidence=confidence))
-      self.player.run()
-    else:
-      self.logger.debug('No new confidence.')
+def defaultPositionsMonitor(models, accountId, logger=None):
+  creator = PositionsManager(models, accountId=accountId, logger=logger)
+  executor = TradeExecutor(models, accountId=accountId, logger=logger)
+  player = PositionsPlayer(models, accountId=accountId, logger=logger,
+                           actionCreator=creator, actionExecutor=executor)
+  return PositionsMonitor(models, accountId=accountId, loop=False, logger=logger,
+                          player=player)
 
-class PositionListener(AbstractListener):
-  def __init__(self, models, accountId, Player, logger=None):
-    if logger is None:
-      logger = logging.getLogger()
-    self.logger = logger
-    self.player = Player(models, accountId=accountId, logger=logger)
-  
-  def handleEntry(self, positions):
-    if len(positions) > 0:
-      self.logger.info('Open positions exists, #p={n}.'
-                       .format(n=len(positions)))
-      self.player.run()
-    else:
-      self.logger.debug('No opening position.')
-
-def createPositionsPlayer(models, accountId, logger=None):
-  return PositionsPlayer(models,
-		         ActionCreator=PositionsManager,
-                         ActionExecutor=TradeExecutor,
-                         accountId=accountId,
-                         logger=logger)
 
 def runStep(logger=None):
   accountId = Properties.ACCOUNT_ID
   models = getModels(getDBInstance())
-  confidenceListener = ConfidenceListener(models, accountId=accountId, logger=logger)
-  confidenceMonitor = ConfidenceMonitor(models, accountId=accountId, loop=False, logger=logger)
-  confidenceMonitor.setListener(confidenceListener)
-  
-  positionListener = PositionListener(models, Player=createPositionsPlayer,
-                                      accountId=accountId,
-                                      logger=logger)
-  positionMonitor = PositionMonitor(models, accountId=accountId,
-                                    loop=False, logger=logger)
-  positionMonitor.setListener(positionListener)
-  
-  confidenceMonitor.start()
-  positionMonitor.start()
+  monitors = [
+    defaultTrendMonitor(models, accountId, logger),
+    defaultPositionsMonitor(models, accountId, logger)
+  ]
+  for m in monitors: m.start()
 
 def main():
   checkOk = checkProperties()

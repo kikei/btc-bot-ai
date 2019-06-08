@@ -183,6 +183,35 @@ class Confidence(object):
     return text
 
 
+class TrendStrength(object):
+  
+  def __init__(self, date, strength):
+    self.date = date
+    self.strength = strength
+  
+  @staticmethod
+  def fromDict(obj):
+    if obj is None:
+      return None
+    date = datetime.datetime.fromtimestamp(obj['timestamp'])
+    trend = TrendStrength(date, obj['strength'])
+    return trend
+  
+  def toDict(self):
+    obj = {
+      'timestamp': self.date.timestamp(),
+      'strength': self.strength
+    }
+    return obj
+  
+  def __str__(self):
+    text = ('date={date}, strength={strength:.3f}'
+            .format(date=datetimeToStr(self.date),
+                    strength=self.strength))
+    text = 'TrendStrength(' + text + ')'
+    return text
+
+
 class Trade(object):
   def __init__(self, date, position):
     self.date = date
@@ -239,9 +268,13 @@ class OneTick(object):
     one = OneTick(obj['ask'], obj['bid'], date)
     return one
   
-  def toDict(self):
+  def toDict(self, dateInString=False):
+    if dateInString:
+      date = datetimeToStr(self.date.timestring())
+    else:
+      date = self.date.timestamp()
     obj = {
-      'datetime': self.date.timestamp(),
+      'datetime': date,
       'ask': self.ask,
       'bid': self.bid
     }
@@ -254,7 +287,10 @@ class OneTick(object):
 
 class Tick(object):
   BitFlyer = 'bitflyer'
+  BitFlyerETHBTC = 'bitflyer_ethbtc'
   Quoine = 'quoine'
+  BinanceETHBTC = 'binance_ethbtc'
+  BinanceXRPBTC = 'binance_xrpbtc'
   
   def __init__(self, ticks):
     self.ticks = ticks
@@ -267,7 +303,8 @@ class Tick(object):
 
   @staticmethod
   def exchangers():
-    return [Tick.BitFlyer, Tick.Quoine]
+    return [Tick.BitFlyer, Tick.BitFlyerETHBTC, Tick.Quoine,
+            Tick.BinanceETHBTC, Tick.BinanceXRPBTC]
 
   def toDict(self):
     d = {}

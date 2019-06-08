@@ -2,15 +2,16 @@ import itertools
 import datetime
 import pymongo
 
-from classes import Tick, OneTick, OnePosition, Confidence, Trade, Position, datetimeToStr
+from classes import Tick, OneTick, OnePosition, Confidence, TrendStrength, Trade, Position, datetimeToStr
 
 class Models(object):
-    def __init__(self, dbs):
+    def __init__(self, dbs, saveTickDateInString=False):
       btctai_db = dbs.btctai_db
       tick_db = dbs.tick_db
       self.Values = Values(btctai_db)
       self.Confidences = Confidences(btctai_db)
-      self.Ticks = Ticks(tick_db)
+      self.TrendStrengths = TrendStrengths(btctai_db)
+      self.Ticks = Ticks(tick_db, saveDateInString=saveTickDateInString)
       self.Trades = Trades(btctai_db)
       self.Positions = Positions(btctai_db)
 
@@ -19,6 +20,9 @@ class Models(object):
 
     def Confidences(self):
       return self.Confidences
+
+    def TrendStrengths(self):
+      return self.TrendStrengths
 
     def Ticks(self):
       return self.Ticks
@@ -31,12 +35,16 @@ class Models(object):
 
 
 class Ticks(object):
-  def __init__(self, db):
+  def __init__(self, db, saveDateInString=False):
     self.db = db
     self.collections = {
       Tick.BitFlyer: self.db.tick_bitflyer,
-      Tick.Quoine: self.db.tick_quoine
+      Tick.BitFlyerETHBTC: self.db.tick_bitflyer_ethbtc,
+      Tick.Quoine: self.db.tick_quoine,
+      Tick.BinanceETHBTC: self.db.tick_binance_ethbtc,
+      Tick.BinanceXRPBTC: self.db.tick_binance_xrpbtc
     }
+    self.saveDateInString = saveDateInString
 
   def setup(self):
     for k, collection in self.collections:
@@ -70,13 +78,19 @@ class Ticks(object):
     collections = [self.collections[e] for e in exchangers]
     conditions = []
     if start is not None:
-      dateStart = datetime.datetime.fromtimestamp(start)
-      dateStart = datetimeToStr(dateStart)
-      conditions.append({'datetime': {'$gt': dateStart}})
+      if self.saveDateInString:
+        dateStart = datetime.datetime.fromtimestamp(start)
+        dateStart = datetimeToStr(dateStart)
+        conditions.append({'datetime': {'$gt': dateStart}})
+      else:
+        conditions.append({'datetime': {'$gt': start}})
     if end is not None:
-      dateEnd = datetime.datetime.fromtimestamp(end)
-      dateEnd = datetimeToStr(dateEnd)
-      conditions.append({'datetime': {'$lt': dateEnd}})
+      if self.saveDateInString:
+        dateEnd = datetime.datetime.fromtimestamp(end)
+        dateEnd = datetimeToStr(dateEnd)
+        conditions.append({'datetime': {'$lt': dateEnd}})
+      else:
+        conditions.append({'datetime': {'$lt': end}})
     if len(conditions) > 0:
       curs = [c.find({'$and': conditions}) for c in collections]
     else:
@@ -97,8 +111,9 @@ class Ticks(object):
     for e in exchangers:
       if tick.exchanger(e) is not None:
         t = tick.exchanger(e)
-        result = self.collections[e].replace_one({'datetime': t.date},
-                                                 t.to_dict(), upsert=True)
+        obj = t.toDict(dateInString=self.saveDateInString)
+        result = self.collections[e].replace_one({'datetime': obj['datetime']},
+                                                 obj, upsert=True)
         if result.matched_count != 0:
           results[e] = t
     return results
@@ -116,6 +131,14 @@ class Values(object):
   AdjusterLotDecay = 'adjuster.lot.decay'
   PositionThresProfit = 'position.profit.thres'
   PositionThresLossCut = 'position.losscut.thres'
+  OperatorLastFired = 'operator.fired.last'
+  OperatorSleepDuration = 'operator.fired.sleep'
+  OperatorTrendStrengthLoad = 'operator.trendstrength.load'
+  OperatorTrendWidth = 'operator.trend.width'
+  OperatorTrendGradient = 'operator.trend.gradient'
+  OperatorTrendSize = 'operator.trend.size'
+  OperatorPositionsMax = 'operator.positions.max'
+  OperatorLotInit = 'operator.lot.init'
   AllKeys = [
     Enabled,
     AdjusterStep,
@@ -126,6 +149,14 @@ class Values(object):
     AdjusterLotMin,
     AdjusterLotInit,
     AdjusterLotDecay,
+    OperatorLastFired,
+    OperatorSleepDuration,
+    OperatorTrendStrengthLoad,
+    OperatorTrendWidth,
+    OperatorTrendGradient,
+    OperatorTrendSize,
+    OperatorPositionsMax,
+    OperatorLotInit,
     PositionThresProfit,
     PositionThresLossCut
   ]
@@ -139,6 +170,14 @@ class Values(object):
     AdjusterLotMin: 'float',
     AdjusterLotInit: 'float',
     AdjusterLotDecay: 'float',
+    OperatorLastFired: 'float',
+    OperatorSleepDuration: 'float',
+    OperatorTrendStrengthLoad: 'int',
+    OperatorTrendWidth: 'int',
+    OperatorTrendGradient: 'float',
+    OperatorTrendSize: 'int',
+    OperatorPositionsMax: 'int',
+    OperatorLotInit: 'float',
     PositionThresProfit: 'float',
     PositionThresLossCut: 'float'
   }
@@ -272,6 +311,72 @@ class Confidences(object):
       return None
     else:
       return confidence
+
+class TrendStrengths(object):
+  def __init__(self, db):
+    self.collection = db.trendstrength
+    self.setup()
+
+  def setup(self):
+    self.collection.create_index([('account_id', pymongo.TEXT),
+                                  ('timestamp', pymongo.DESCENDING)])
+
+  def oneNew(self, accountId):
+    """
+    (self: TrendStrengths, accountId: str) -> TrendStrengths
+    """
+    conditions = {'account_id': accountId}
+    cur = self.collection.find(conditions).sort('timestamp', -1).limit(1)
+    value = next(cur, None)
+    if value is not None:
+      value = TrendStrength.fromDict(value)
+    return value
+
+  def all(self, accountId, before=None, after=None, count=None):
+    """
+    (self: TrendStrengths, accountId: str) -> (TrendStrengths)
+    """
+    conditions = [{'account_id': accountId}]
+    if before is not None:
+      conditions.append({'timestamp': {'$lt': before}})
+    if after is not None:
+      conditions.append({'timestamp': {'$gt': after}})
+    conditions = {'$and': conditions}
+    cur = self.collection.find(conditions).sort('timestamp', -1)
+    if count is not None:
+      cur = cur.limit(count)
+    return [TrendStrength.fromDict(i) for i in cur]
+  
+  def save(self, trendStrength, accountId):
+    """
+    (self: TrendStrength, trendStrength: TrendStrength, accountId: str)
+    -> TrendStrength
+    """
+    obj = trendStrength.toDict()
+    obj['account_id'] = accountId
+    conditions = {'$and': [
+      {'account_id': accountId}, {'timestamp': obj['timestamp']}
+    ]}
+    result = self.collection.replace_one(conditions, obj, upsert=True)
+    if result.upserted_id is None:
+      return None
+    else:
+      return trendStrength
+  
+  def delete(self, trendStrength, accountId):
+    """
+    (self: TrendStrength, trendStrength: TrendStrength, accountId: str)
+    -> TrendStrength
+    """
+    obj = trendStrength.toDict()
+    conditions = {'$and': [
+      {'account_id': accountId}, {'timestamp': obj['timestamp']}
+    ]}
+    result = self.collection.delete_one(conditions)
+    if result.deleted_count == 0:
+      return None
+    else:
+      return trendStrength
 
 class Trades(object):
   def __init__(self, db):

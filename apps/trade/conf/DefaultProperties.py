@@ -16,6 +16,11 @@ QUOINE_TICK_SIZE = 0.1
 # MongoDB設定
 MONGO_HOST = 'localhost'
 MONGO_PORT = 27017
+SAVE_TICKDATE_IN_STRING = False
+
+# Binance設定
+BINANCE_API_KEY = None
+BINANCE_SECRET_KEY = None
 
 # リセット設定
 N_RESET_FOR = 1

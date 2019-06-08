@@ -11,6 +11,10 @@ from PositionsManager import *
 from ActionsDispatcher import *
 from ModelsDummy import ModelsDummy
 
+def savePositions(models, positions, accountId):
+  for e in positions:
+    models.Positions.save(e, accountId=accountId)
+
 @pytest.fixture
 def accountId():
   return 'test'
@@ -64,11 +68,12 @@ def test_createAction_longProfit(modelsDummy, accountId):
     Position(now, Position.StatusOpen, [longOne(tick.bid)]), # Not match
     Position(now, Position.StatusOpen, [longOne(500000)])    # Set Profit
   ]
-  action = manager.createAction(positions)
+  savePositions(models, positions, accountId)
+  action = manager.createAction()
   assert isinstance(action, Action)
   assert action.name == PlayerActions.CloseForProfit
   assert isinstance(action.args[0], Position)
-  assert action.args[0] == positions[2]
+  assert str(action.args[0]) == str(positions[2])
 
 def test_createAction_longLossCut(modelsDummy):
   models = modelsDummy
@@ -87,7 +92,8 @@ def test_createAction_longLossCut(modelsDummy):
     Position(now, Position.StatusOpen, [longOne(tick.bid)]), # Not match
     Position(now, Position.StatusOpen, [longOne(500000)])    # LossCut
   ]
-  action = manager.createAction(positions)
+  savePositions(models, positions, accountId)
+  action = manager.createAction()
   assert isinstance(action, Action)
   assert action.name == PlayerActions.CloseForLossCut
   assert isinstance(action.args[0], Position)
@@ -111,11 +117,12 @@ def test_createAction_shortProfit(modelsDummy, accountId):
     Position(now, Position.StatusOpen, [shortOne(tick.ask)]), # Not match
     Position(now, Position.StatusOpen, [shortOne(500000)])    # Set Profit
   ]
-  action = manager.createAction(positions)
+  savePositions(models, positions, accountId)
+  action = manager.createAction()
   assert isinstance(action, Action)
   assert action.name == PlayerActions.CloseForProfit
   assert isinstance(action.args[0], Position)
-  assert action.args[0] == positions[2]
+  assert str(action.args[0]) == str(positions[2])
 
 def test_createAction_longLossCut(modelsDummy, accountId):
   models = modelsDummy
@@ -134,8 +141,9 @@ def test_createAction_longLossCut(modelsDummy, accountId):
     Position(now, Position.StatusOpen, [shortOne(tick.ask)]), # Not match
     Position(now, Position.StatusOpen, [shortOne(500000)])    # LossCut
   ]
-  action = manager.createAction(positions)
+  savePositions(models, positions, accountId)
+  action = manager.createAction()
   assert isinstance(action, Action)
   assert action.name == PlayerActions.CloseForLossCut
   assert isinstance(action.args[0], Position)
-  assert action.args[0] == positions[2]
+  assert str(action.args[0]) == str(positions[2])

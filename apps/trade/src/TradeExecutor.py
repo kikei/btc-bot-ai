@@ -78,9 +78,9 @@ class TradeExecutor(object):
     position = models.Positions.save(position, accountId=self.accountId)
     return trades, position
   
-  def handleOpen(self, confidence, lot, traderFun):
+  def handleOpen(self, lot, traderFun):
     """
-    (self: TradeExecutor, confidence: Confidence, lot: float,
+    (self: TradeExecutor, lot: float,
      traderFun: (lot: float) -> OnePosition) -> Trade
     """
     # Open position
@@ -95,22 +95,20 @@ class TradeExecutor(object):
       return False
     # Update DB
     models = self.models
-    confidence.updateStatus(Confidence.StatusUsed)
-    models.Confidences.save(confidence, accountId=self.accountId)
     self.logger.warning('Successfully opened, trade={}'.format(trade))
     return True
   
-  def handleOpenLong(self, confidence, lot):
+  def handleOpenLong(self, lot):
     """
-    (self: TradeExecutor, confidence: Confidence, lot: float) -> Trade
+    (self: TradeExecutor, lot: float) -> Trade
     """
-    return self.handleOpen(confidence, lot, self.trader.openLongPosition)
+    return self.handleOpen(lot, self.trader.openLongPosition)
   
-  def handleOpenShort(self, confidence, lot):
+  def handleOpenShort(self, lot):
     """
-    (self: TradeExecutor, confidence: Confidence, lot: float) -> Trade
+    (self: TradeExecutor, lot: float) -> Trade
     """
-    return self.handleOpen(confidence, lot, self.trader.openShortPosition)
+    return self.handleOpen(lot, self.trader.openShortPosition)
   
   def handleIgnoreConfidence(self, confidence):
     """
@@ -135,5 +133,6 @@ class TradeExecutor(object):
                         .format(t=str(trade), p=position))
       return False
     # Update DB
-    self.logger.warning('Successfully closed, trade={t}'.format(t=trade))
+    self.logger.warning('Successfully closed, trade={t}'
+                        .format(t=', '.join(map(str, trade))))
     return True

@@ -18,11 +18,15 @@ listen.interval.seconds = 1
 exchangers = bitflyer, quoine
 
 [export]
+units = minutely, hourly, daily
 exchangers = bitflyer, quoine
 data.dir = ../data/raw
 data.npy = summary_{exchanger}_{unit}_{ty}.npy
+completion.maxHourly = 24
+completion.maxDaily = 7
 
 [supervisor]
+units = daily, hourly
 exchangers = bitflyer, quoine
 data.dir = ../data/raw
 
