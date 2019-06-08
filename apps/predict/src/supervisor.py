@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 from charts import RSI, BollingerBand, Ichimoku
 from dsp import lpfilter, crosszero
 from learningUtils import sigmoid, differentiate
-from utils import readConfig, getLogger, loadnpy, savenpy, nanIn
+from utils import readConfig, getLogger, loadnpy, savenpy, nanIn, StopWatch
 
 logger = getLogger()
 config = readConfig('predict.ini')
@@ -123,7 +123,7 @@ def generateAnswer(v1, lpfs):
   # Find peeks; v2[p] is max, v2[q] is min | v7[p] = +1, v7[q] = -1
   v7 = rectify(v2, v6)
   # Remove peeks close to another
-  v8 = easing(v2, v7, minWidth=24)
+  v8 = easing(v2, v7, minWidth=11)
   v9 = rectify(v2, v8)
   #v10 = trend(v9)
   v11 = RSI(v2, 23, slide=11) - 0.5
@@ -185,8 +185,15 @@ def runForAll(exchangers, units, types):
         run(exchanger, unit, ty)
 
 def main():
+  # Measure run time
+  timer = StopWatch()
+  timer.start()
+  # Execution
   types = ['askAverage', 'askOpen', 'askClose']
   runForAll(EXCHANGERS, UNITS, types)
+  # Finished
+  seconds = timer.stop()
+  logger.debug('End supervising, elapsed={s:.2f}s'.format(s=seconds))
 
 if __name__ == '__main__':
   main()
