@@ -11,14 +11,19 @@ import matplotlib.pyplot as plt
 from Plotter import Plotter
 from dsp import crosszero
 from learningUtils import validated, to2d, zscore, loadModel
-from utils import readConfig, getLogger, reportTrend, loadnpy
+from utils import readConfig, getLogger, reportTrend, loadnpy, StopWatch
 
 logger = getLogger()
 logger.debug('Start prediction.')
 
+# Measure run time
+timer = StopWatch()
+timer.start()
+
 config = readConfig('predict.ini')
 
 INPUT_SIZE = config['predict'].getint('fitting.inputsize')
+SAMPLES_PREDICT = config['train'].getint('samples.predict')
 
 def load(exchanger, unit, ty):
   return loadnpy(config, exchanger, unit, ty, nan=0.)
@@ -95,8 +100,7 @@ Xbh1_ = Xbh1[len(Xbh1)-availableSize+sampleSize-1:]
 ybhAvr = smoothPredicted(ybhPred, 11)
 ybhZero = crosszero(ybhAvr - 0.5, thres=5e-3)
 
-xlim = (Xbh1_.shape[0] - 8000, Xbh1_.shape[0] - 0)
-xlim = (16000, 16500)
+xlim = (Xbh1_.shape[0] - 2000, Xbh1_.shape[0] - 0)
 
 xPlot = np.arange(0, len(Xbh1_), 1)
 p.plot(xPlot, Xbh1_, n=0, label='ask avr.')
@@ -108,6 +112,7 @@ p.plot(xPlot, ybh0, n=1, label='exp.')
 p.plot(xPlot, ybhPred, n=1, label='pred.')
 p.plot(xPlot, ybhAvr, n=1, label='avr.')
 p.hlines(0.5, 0, len(Xbh1_), n=1, linewidth=0.4)
+p.vlines(len(Xbh1_) - SAMPLES_PREDICT, 0, 1, n=1, linewidth=0.4)
 p.limit(ybh0, xlim, n=1)
 p.plot(xPlot, np.abs(ybh0 - ybhPred), n=2, label='delta')
 p.savefig('../figures/predicted.svg')
@@ -122,10 +127,20 @@ for i in range(SHOW_LAST_PREDICTS, 0, -1):
     logger.info('Predicts[{i:2.0f}] are trend={trend:0.2f}.'
                 .format(i=i, trend=ybhPred[-i]))
 
-logger.debug('End prediction.')
+# Finished
+seconds = timer.stop()
+logger.debug('End prediction, elapsed={s:.2f}s'.format(s=seconds))
 
 logger.debug('Start registering.')
 yTrend = ybhPred[-1].item()
-logger.debug('Registering confidences, trend={trend:.3f}.'.format(trend=yTrend))
+logger.debug('Registering trend={trend:.3f}.'.format(trend=yTrend))
+reportTrend(config, yTrend, logger)
+logger.debug('End registering.')
+
+logger.debug('Start registering for aimai.xaxxi.net.')
+config['aimai.db']['uri'] = 'https://aimai.xaxxi.net'
+config['aimai.db']['username'] =  'fujii'
+config['aimai.db']['password'] =  'qrotouiupupp'
+logger.debug('Registering trend={trend:.3f}.'.format(trend=yTrend))
 reportTrend(config, yTrend, logger)
 logger.debug('End registering.')
