@@ -169,3 +169,42 @@ def getLogger(cwd=None):
       if h is not None: logger.addHandler(h)
     return logger
 
+class StopWatch(object):
+  def __init__(self):
+    self.records = []
+  
+  @staticmethod
+  def record(start=None, stop=None):
+    return {'start': start, 'stop': stop}
+  
+  @staticmethod
+  def seconds(record):
+    start = record['start']
+    if 'stop' not in record:
+      return -1
+    stop = record['stop']
+    return (stop - start).total_seconds()
+  
+  def start(self):
+    time = datetime.datetime.now()
+    self.records.append(StopWatch.record(start=time))
+    return len(self.records) - 1
+  
+  def stop(self, timerId=None):
+    time = datetime.datetime.now()
+    if timerId is None:
+      timerId = len(self.records) - 1
+    if timerId >= len(self.records):
+      raise IndexError('timer id out of range')
+    record = self.records[timerId]
+    record['stop'] = time
+    return StopWatch.seconds(record)
+  
+  def elapsed(self, timerId=None):
+    if timerId is None:
+      timerId = len(self.records) - 1
+    if timerId >= len(self.records):
+      raise IndexError('timer id out of range')
+    record = self.records[timerId]
+    return StopWatch.seconds(record)
+

@@ -61,6 +61,16 @@ class Plotter(object):
     else:
       self.axs[n].hlines(y, x0, x1, **kwargs)
   
+  def vlines(self, x, y0, y1, n=None, **kwargs):
+    kwargs = mergeDicts(self.kwargs, kwargs)
+    if 'color' not in kwargs:
+      kwargs['color'] = self.colors[self.indexColors % len(self.colors)]
+      self.indexColors += 1
+    if self.fig is None:
+      self.plt.vlines(x, y0, y1, **kwargs)
+    else:
+      self.axs[n].vlines(x, y0, y1, **kwargs)
+  
   def limit(self, y, xlim, n=0, padding=1e-2):
     if isinstance(y, np.ndarray):
       if xlim[0] > xlim[1]:

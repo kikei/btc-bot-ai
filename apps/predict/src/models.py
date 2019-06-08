@@ -90,9 +90,18 @@ class Summaries(object):
       item = Summary.fromDict(item)
     return item
   
-  def all(self, exchanger, unit, order=1):
+  def all(self, exchanger, unit, before=None, after=None, order=1):
     collection = self.getCollection(exchanger, unit)
-    items = collection.find().sort('datetime', order)
+    conditions = []
+    if before is not None:
+      conditions.append({'datetime': {'$lt': before}})
+    if after is not None:
+      conditions.append({'datetime': {'$gt': after}})
+    if len(conditions) > 0:
+      conditions = {'$and': conditions}
+    else:
+      conditions = None
+    items = collection.find(conditions).sort('datetime', order)
     return (Summary.fromDict(t) for t in items)
   
   def saveAll(self, exchanger, unit, sums):

@@ -2,7 +2,7 @@ import datetime
 import numpy as np
 from classes import Summary
 from models import Ticks, Summaries
-from utils import readConfig, getDBInstance, getLogger, group
+from utils import readConfig, getDBInstance, getLogger, group, StopWatch
 
 logger = getLogger()
 config = readConfig('predict.ini')
@@ -65,6 +65,10 @@ def ticksBy(ticks, exchanger, unit, dateStart=None):
 
 
 def main():
+  # Measure run time
+  timer = StopWatch()
+  timer.start()
+  # Setup models
   db = getDBInstance(config)
   ticks = Ticks(db.tick_db)
   summaries = Summaries(db.tick_summary_db)
@@ -80,6 +84,9 @@ def main():
       sums = ticksBy(ticks, exchanger, unit, dateStart=start)
       logger.info('Saving summary...')
       summaries.saveAll(exchanger, unit, sums)
+  # Finished
+  seconds = timer.stop()
+  logger.debug('End summarization, elapsed={s:.2f}s'.format(s=seconds))
 
 if __name__ == '__main__':
   main()
