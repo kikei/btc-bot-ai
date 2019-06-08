@@ -15,7 +15,7 @@ from keras import backend as K
 
 from Plotter import Plotter
 from learningUtils import validated, to2d, zscore, round_binary_accuracy, underSampling, balance, saveModel
-from utils import readConfig, getLogger, loadnpy
+from utils import readConfig, getLogger, loadnpy, StopWatch
 
 logger = getLogger()
 config = readConfig('predict.ini')
@@ -27,6 +27,10 @@ BATCH_SIZE = config['train'].getint('fitting.batchsize')
 EPOCHS = config['train'].getint('fitting.epochs')
 SAMPLES_PREDICT = config['train'].getint('samples.predict')
 ACCURACY_MIN = config['train'].getfloat('accuracy.min')
+
+# Measure run time
+timer = StopWatch()
+timer.start()
 
 def load(exchanger, unit, ty):
   return loadnpy(config, exchanger, unit, ty, nan=0.)
@@ -153,7 +157,7 @@ Xbh0[-1:,:,10] = Xqm1[-sampleSize:]
 Xbh0[:-1,:,10] = to2d(Xqm1[:-minutesToday], sampleSize,
                       available=availableSizeM, stride=60)
 
-skipOld = 10000
+skipOld = 0
 dataSize = Xbh0.shape[0] - skipOld
 Xbh = np.zeros((dataSize, Xbh0.shape[1] * Xbh0.shape[2]))
 for i in range(0, dataSize):
@@ -203,4 +207,6 @@ logger.info('#Ticks={tick}, #Train={train}, #Predicted={predict}.'
             .format(tick=Xbh.shape[0], train=trainSize,
                     predict=Xbh.shape[0] - trainSize))
 
-logger.info('Training completed.')
+# Finished
+seconds = timer.stop()
+logger.info('Training completed, elapsed={s:.2f}s'.format(s=seconds))
