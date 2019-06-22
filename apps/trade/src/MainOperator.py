@@ -94,12 +94,22 @@ class MainOperator(object):
       self.logger.debug('Time width of trend entries is not enough, ' +
                         'tmax={tmax}, tmin={tmin}.'.format(tmax=tmax, tmin=tmin))
     return result
-  
-  def checkPositionsCount(self, chance):
-    maxPositions = self.getStoredValue(Values.OperatorPositionsMax)
+
+  def getPositionSize(self):
     longs, shorts = self.getOpenPositions()
     amountLong = sum(sum(o.sizeWhole() for o in p.positions) for p in longs)
     amountShort = sum(sum(o.sizeWhole() for o in p.positions) for p in shorts)
+    return {
+      'long': amountLong,
+      'short': amountShort,
+      'total': amountLong - amountShort
+    }
+  
+  def checkPositionsCount(self, chance):
+    maxPositions = self.getStoredValue(Values.OperatorPositionsMax)
+    position = self.getPositionSize()
+    amountLong = position['long']
+    amountShort = position['short']
     self.logger.info('Check positions count, long={l}, short={s}'
                      .format(l=amountLong, s=amountShort))
     if chance > 0:
@@ -146,6 +156,20 @@ class MainOperator(object):
                           .format(f=f, f0=f0, f1=f1,
                                   e=', '.join(map(str, entries))))
       chance = -1
+    position = self.getPositionSize()
+    amount = position['total']
+    if chance is None and f0 < 0 and f1 < 0 and amount > 0:
+      self.logger.warning('Decision is -1(short), positions oppose trend, ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = -1
+    if chance is None and f0 > 0 and f1 > 0 and amount < 0:
+      self.logger.warning('Decision is +1(long), positions oppose trend, ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = +1
     if chance is None: return 0
     if not self.checkPositionsCount(chance): return 0
     return chance
