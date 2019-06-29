@@ -91,9 +91,10 @@ class BitFlyer(object):
         raise BitFlyerAPIError('path={path}'.format(path=path))
       if res is not None and res.status_code == requests.codes.ok:
         return res.text
-
       self.logger.info('BitFlyer API error, code={code}, text={text}'
                        .format(code=res.status_code, text=res.text))
+      if res is not None and res.status_code == requests.codes.bad_request:
+        break
       time.sleep(1)
     self.logger.warning(('Gave up calling BitFlyer API, ' +
                          'retried {count} times, path={path}')
@@ -303,6 +304,9 @@ class BitFlyer(object):
     now = datetime.datetime.now()
     starttime = time.mktime(now.timetuple())
     order_id = self.exec_order(side, price, size)
+    if order_id is None:
+       self.logger.warning('Failed to execute order in BitFlyer.')
+       return None
     executed = self.wait_last_order_executed()
     if not executed:
       self.logger.warning('Failed to request order in BitFlyer.')
