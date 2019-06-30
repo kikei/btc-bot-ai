@@ -24,10 +24,11 @@ class MainOperator(object):
       Values.OperatorTrendGradient,
       Values.OperatorTrendSize,
       Values.OperatorTrendWidth,
-      Values.OperatorTrendStrengthLoad
+      Values.OperatorTrendStrengthLoad,
+      Values.OperatorPositionsMax
     ]
     for k in required:
-      value = self.getStoredValue(Values.OperatorSleepDuration)
+      value = self.getStoredValue(k)
       if value is None:
         msg = 'Setting "{k}" not initialized.'.format(k=k)
         raise MainOperatorDBException(msg)
@@ -42,7 +43,8 @@ class MainOperator(object):
     durationRead = self.getStoredValue(Values.OperatorTrendStrengthLoad)
     now = datetime.datetime.now()
     after = now.timestamp() - durationRead
-    values = self.models.TrendStrengths.all(after=after)
+    values = self.models.TrendStrengths.all(after=after,
+                                            accountId=self.accountId)
     return values
   
   def getOpenPositions(self):
@@ -57,30 +59,6 @@ class MainOperator(object):
     shorts = list(filter(isSide(OnePosition.SideShort), positions))
     return longs, shorts
   
-#   def save(self):
-#     self.models.Values.set(Values.AdjusterSpeed, self.speed,
-#                            accountId=self.accountId)
-#     self.models.Values.set(Values.AdjusterLastDirection, self.lastDirection,
-#                            accountId=self.accountId)
-#
-#   def lotFunction(self, x):
-#     return self.initLot * self.decayLot ** (x - 1.)
-#
-#   def calc(self, direction):
-#     speed = self.speed
-#     if self.lastDirection * direction > 0:
-#       speed += direction * self.step
-#     else:
-#       speed = direction * self.step
-#     self.lastDirection = direction
-#     self.speed = speed
-#     self.save()
-#     if abs(speed) < self.stop:
-#       lot = self.lotFunction(abs(speed))
-#       return max(lot, self.minLot) * direction
-#     else:
-#       return 0.0
-  
   def isSleeping(self):
     now = datetime.datetime.now().timestamp()
     lastDate = self.getStoredValue(Values.OperatorLastFired)
@@ -89,6 +67,10 @@ class MainOperator(object):
       lastDate is not None and \
       sleepDuration is not None and \
       lastDate + sleepDuration >= now
+  
+  def updateLastFired(self):
+    now = datetime.datetime.now().timestamp()
+    self.setStoredValue(Values.OperatorLastFired, now)
   
   def checkEntriesSize(self, entries):
     minSize = self.getStoredValue(Values.OperatorTrendSize)
@@ -112,6 +94,30 @@ class MainOperator(object):
       self.logger.debug('Time width of trend entries is not enough, ' +
                         'tmax={tmax}, tmin={tmin}.'.format(tmax=tmax, tmin=tmin))
     return result
+
+  def getPositionSize(self):
+    longs, shorts = self.getOpenPositions()
+    amountLong = sum(sum(o.sizeWhole() for o in p.positions) for p in longs)
+    amountShort = sum(sum(o.sizeWhole() for o in p.positions) for p in shorts)
+    return {
+      'long': amountLong,
+      'short': amountShort,
+      'total': amountLong - amountShort
+    }
+  
+  def checkPositionsCount(self, chance):
+    maxPositions = self.getStoredValue(Values.OperatorPositionsMax)
+    position = self.getPositionSize()
+    amountLong = position['long']
+    amountShort = position['short']
+    self.logger.info('Check positions count, long={l}, short={s}'
+                     .format(l=amountLong, s=amountShort))
+    if chance > 0:
+      return amountLong - amountShort < maxPositions
+    elif chance < 0:
+      return amountShort - amountLong < maxPositions
+    else:
+      return False
   
   def makeDecision(self, entries):
     """
@@ -135,14 +141,38 @@ class MainOperator(object):
     f0 = np.inner(f, np.array([0, 1])) # f0 = b
     f1 = np.inner(f, np.array([1, 1])) # f1 = x + b
     self.logger.debug('Decision calculation finished, ' +
-                      'f={f}, f(0)={f0}, f(1)={f1}.'.format(f=f, f0=f0, f1=f1))
-    print('Decision calculation finished, ' +
-          'f={f}, f(0)={f0}, f(1)={f1}.'.format(f=f, f0=f0, f1=f1))
+                      'f={f}, f(0)={f0}, f(1)={f1}.'
+                      .format(f=f, f0=f0, f1=f1))
+    chance = None
     if f[0] > minGradient and f0 < 0 and f1 > 0:
-      return +1
+      self.logger.warning('Decision is +1(long), ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = +1
     if f[0] < -minGradient and f0 > 0 and f1 < 0:
-      return -1
-    return 0
+      self.logger.warning('Decision is -1(down), ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = -1
+    position = self.getPositionSize()
+    amount = position['total']
+    if chance is None and f0 < 0 and f1 < 0 and amount > 0:
+      self.logger.warning('Decision is -1(short), positions oppose trend, ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = -1
+    if chance is None and f0 > 0 and f1 > 0 and amount < 0:
+      self.logger.warning('Decision is +1(long), positions oppose trend, ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = +1
+    if chance is None: return 0
+    if not self.checkPositionsCount(chance): return 0
+    return chance
   
   def calculateLot(self, entries=None, chance=None, longs=None, shorts=None):
     initLot = self.getStoredValue(Values.OperatorLotInit)
@@ -156,11 +186,7 @@ class MainOperator(object):
     else:
       return 0.
 
-  def createAction(self):
-    # Don't do anything just after last action.
-    if self.isSleeping():
-      self.logger.debug('Main operator is sleeping.')
-      return None
+  def getAction(self):
     # Get latest predictions.
     entries = self.getCurrentEntries()
     # Decide if it is chance for doing positions.
@@ -171,9 +197,15 @@ class MainOperator(object):
     # Open/close existing positions
     longs, shorts = self.getOpenPositions()
     if chance == +1 and len(shorts) > 0:
-      return Action(PlayerActions.CloseForProfit, shorts[0])
+      self.logger.info('Action is CloseForProfit, ' +
+                       'chance={c}, position={p}, #short={n}'
+                       .format(c=chance, p=shorts[-1], n=len(shorts)))
+      return Action(PlayerActions.CloseForProfit, shorts[-1])
     elif chance == -1 and len(longs) > 0:
-      return Action(PlayerActions.CloseForProfit, longs[0])
+      self.logger.info('Action is CloseForProfit, ' +
+                       'chance={c}, position={p}, #long={n}'
+                       .format(c=chance, p=longs[-1], n=len(longs)))
+      return Action(PlayerActions.CloseForProfit, longs[-1])
     # Open new position
     lot = self.calculateLot(entries=entries, chance=chance,
                             longs=longs, shorts=shorts)
@@ -184,3 +216,14 @@ class MainOperator(object):
       return Action(PlayerActions.OpenShort, -lot)
     else:
       return None
+  
+  def createAction(self):
+    # Don't do anything just after last action.
+    if self.isSleeping():
+      self.logger.debug('Main operator is sleeping.')
+      return None
+    action = self.getAction()
+    if action is not None:
+      self.logger.warning('New action created, action={a}.'.format(a=action))
+      self.updateLastFired()
+    return action

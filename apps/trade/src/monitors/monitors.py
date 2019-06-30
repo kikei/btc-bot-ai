@@ -8,7 +8,7 @@ class PositionsMonitor(AbstractMonitor):
   def handleEntry(self, entry):
     if len(entry) > 0:
       self.logger.info('Open positions exists, #p={n}.'
-                       .format(n=len(positions)))
+                       .format(n=len(entry)))
       self.player.run()
     else:
       self.logger.debug('No opening position.')
@@ -30,7 +30,7 @@ class TrendMonitor(AbstractMonitor):
   def handleEntry(self, entry):
     if entry is not None and \
        (self.lastEntry is None or self.lastEntry < entry.date):
-      self.logger.info('New trend entry received, entry={e}.'.format(entry))
+      self.logger.info('New trend entry received, entry={e}.'.format(e=entry))
       self.player.run()
     else:
       self.logger.debug('No new entry.')

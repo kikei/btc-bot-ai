@@ -32,7 +32,7 @@ def ModelsDummy():
       self.collection[strength.date] = strength.toDict()
       return strength
 
-    def all(self, before=None, after=None, count=None):
+    def all(self, accountId, before=None, after=None, count=None):
       if before is None:
         before = 1556600400 * 2
       if after is None:

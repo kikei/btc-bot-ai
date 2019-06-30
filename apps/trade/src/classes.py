@@ -73,6 +73,7 @@ class OnePosition(object):
 class Position(object):
   StatusOpen = 'open'
   StatusClose = 'close'
+  StatusIgnored = 'ignored'
   StatusOpening = 'opening'
   StatusClosing = 'closing'
 
@@ -267,9 +268,13 @@ class OneTick(object):
     one = OneTick(obj['ask'], obj['bid'], date)
     return one
   
-  def toDict(self):
+  def toDict(self, dateInString=False):
+    if dateInString:
+      date = datetimeToStr(self.date.timestring())
+    else:
+      date = self.date.timestamp()
     obj = {
-      'datetime': self.date.timestamp(),
+      'datetime': date,
       'ask': self.ask,
       'bid': self.bid
     }
@@ -282,7 +287,10 @@ class OneTick(object):
 
 class Tick(object):
   BitFlyer = 'bitflyer'
+  BitFlyerETHBTC = 'bitflyer_ethbtc'
   Quoine = 'quoine'
+  BinanceETHBTC = 'binance_ethbtc'
+  BinanceXRPBTC = 'binance_xrpbtc'
   
   def __init__(self, ticks):
     self.ticks = ticks
@@ -295,7 +303,8 @@ class Tick(object):
 
   @staticmethod
   def exchangers():
-    return [Tick.BitFlyer, Tick.Quoine]
+    return [Tick.BitFlyer, Tick.BitFlyerETHBTC, Tick.Quoine,
+            Tick.BinanceETHBTC, Tick.BinanceXRPBTC]
 
   def toDict(self):
     d = {}

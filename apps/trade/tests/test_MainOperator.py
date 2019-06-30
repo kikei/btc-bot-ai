@@ -45,6 +45,7 @@ def modelsDummy(accountId):
   models.Values.set(Values.OperatorTrendGradient, 0.02, accountId=accountId)
   models.Values.set(Values.OperatorTrendSize, 4, accountId=accountId)
   models.Values.set(Values.OperatorLotInit, 0.01, accountId=accountId)
+  models.Values.set(Values.OperatorPositionsMax, 5, accountId=accountId)
   # TrendStrengths
   trends = [
     TrendStrength(date(minutes=-70), 0.80),
@@ -73,12 +74,45 @@ def test_getStoredValue(modelsDummy, accountId):
     Values.OperatorTrendGradient,
     Values.OperatorTrendSize,
     Values.OperatorTrendWidth,
-    Values.OperatorTrendStrengthLoad
+    Values.OperatorTrendStrengthLoad,
+    Values.OperatorPositionsMax
   ]
   for k in keys:
     expect = models.Values.get(k, accountId=accountId)
     actual = creator.getStoredValue(k)
     assert expect == actual
+
+def test_checkValues(modelsDummy, accountId):
+  models = modelsDummy
+  # Set correct values
+  models.Values.set(Values.OperatorSleepDuration, 1200.0, accountId=accountId)
+  models.Values.set(Values.OperatorTrendStrengthLoad, 3600, accountId=accountId)
+  models.Values.set(Values.OperatorTrendWidth, 1800, accountId=accountId)
+  models.Values.set(Values.OperatorTrendGradient, 0.02, accountId=accountId)
+  models.Values.set(Values.OperatorTrendSize, 4, accountId=accountId)
+  models.Values.set(Values.OperatorLotInit, 0.01, accountId=accountId)
+  models.Values.set(Values.OperatorPositionsMax, 5, accountId=accountId)
+  keys = [
+    Values.OperatorSleepDuration,
+    Values.OperatorTrendStrengthLoad,
+    Values.OperatorTrendWidth,
+    Values.OperatorTrendGradient,
+    Values.OperatorTrendSize,
+    Values.OperatorLotInit,
+    Values.OperatorSleepDuration,
+    Values.OperatorPositionsMax
+  ]
+  creator = MainOperator(models, accountId=accountId)
+  assert creator.checkValues() is None
+  # Test in case of each keys deleted
+  for k in keys:
+    models.Values.set(k, None, accountId=accountId)
+    try:
+      creator.checkValues()
+      assert False
+    except MainOperatorDBException as e:
+      pass
+
 
 def test_getCurrentEntries(modelsDummy, accountId):
   models = modelsDummy

@@ -91,9 +91,10 @@ class BitFlyer(object):
         raise BitFlyerAPIError('path={path}'.format(path=path))
       if res is not None and res.status_code == requests.codes.ok:
         return res.text
-
       self.logger.info('BitFlyer API error, code={code}, text={text}'
                        .format(code=res.status_code, text=res.text))
+      if res is not None and res.status_code == requests.codes.bad_request:
+        break
       time.sleep(1)
     self.logger.warning(('Gave up calling BitFlyer API, ' +
                          'retried {count} times, path={path}')
@@ -108,10 +109,11 @@ class BitFlyer(object):
     except json.JSONDecodeError as e:
       raise BitFlyerAPIError('api response parse error, path={}'.format(path))
     
-  def get_tick(self):
+  def get_tick(self, code='FX_BTC_JPY'):
     self.logger.debug('Fetching BitFlyer tick.')
     try:
-      board = self.call_json_api('GET', API_PATH_BOARD)
+      path = API_PATH_BOARD.format(product_code=code)
+      board = self.call_json_api('GET', path)
     except BitFlyerAPIError as e:
       self.logger.warning('Failed to fetch BitFlyer tick, API error={e}'
                           .format(e=e))
@@ -302,6 +304,9 @@ class BitFlyer(object):
     now = datetime.datetime.now()
     starttime = time.mktime(now.timetuple())
     order_id = self.exec_order(side, price, size)
+    if order_id is None:
+       self.logger.warning('Failed to execute order in BitFlyer.')
+       return None
     executed = self.wait_last_order_executed()
     if not executed:
       self.logger.warning('Failed to request order in BitFlyer.')
