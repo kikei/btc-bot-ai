@@ -1,26 +1,24 @@
 import numpy as np
 
 
-def SMA(k, x):
+def SMA(k, x, slide=0):
   n = x.size
   y = np.zeros(n)
-  for i in range(1, n+1):
-    e = n - i + k + 1
-    if e > n:
-      e = n
-    y[n-i] = np.average(x[n-i:e])
+  for i in range(0, n):
+    s = max(0, i - k + slide)
+    e = min(n - 1, i + slide + 1)
+    y[i] = np.average(x[s:e])
   return y
 
-def Sigma(k, x):
+def Sigma(k, x, power=2, slide=0):
   n = x.size
   d = x - SMA(k, x)
   y = np.zeros(n)
-  for i in range(1, n+1):
-    e = n - i + k + 1
-    if e > n:
-      e = n
-    y[n-i] = np.sum(d[n-i:e] * d[n-i:e]) / k
-  return np.sqrt(y)
+  for i in range(0, n):
+    s = max(0, i - k + slide)
+    e = min(n - 1, i + slide + 1)
+    y[i] = np.sqrt(np.average(np.power(d[s:e], power)))
+  return y
 
 def Medium(k, x):
   n = x.size
