@@ -95,6 +95,26 @@ class MainOperator(object):
                         'tmax={tmax}, tmin={tmin}.'.format(tmax=tmax, tmin=tmin))
     return result
 
+  def getPositionVariation(self):
+    tick = self.models.Ticks.one()
+    longs, shorts = self.getOpenPositions()
+    onePosition = None
+    varLongs = []
+    varShorts = []
+    if len(longs) > 0:
+      onePosition = longs[0].positions[0]
+    elif len(shorts) > 0:
+      onePosition = shorts[0].positions[0]
+    if onePosition is not None:
+      varLongs = [sum(tick.exchanger(o.exchanger).ask / o.priceMean()
+                      for o in p.positions) for p in longs]
+      varShorts = [sum(tick.exchanger(o.exchanger).bid / o.priceMean()
+                       for o in p.positions) for p in shorts]
+    return {
+      'long': varLongs,
+      'short': varShorts
+    }
+
   def getPositionSize(self):
     longs, shorts = self.getOpenPositions()
     amountLong = sum(sum(o.sizeWhole() for o in p.positions) for p in longs)
@@ -157,14 +177,18 @@ class MainOperator(object):
                                   e=', '.join(map(str, entries))))
       chance = -1
     position = self.getPositionSize()
+    variations = self.getPositionVariation()
     amount = position['total']
-    if chance is None and f0 < 0 and f1 < 0 and amount > 0:
+    self.logger.warning('Positions: amount={a}, variations={v}'.format(a=amount, v=variations))
+    if chance is None and f[0] < 0 and amount > 0 and \
+       len(variations['long']) > 0 and variations['long'][-1] > 1.0:
       self.logger.warning('Decision is -1(short), positions oppose trend, ' +
                           'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
                           .format(f=f, f0=f0, f1=f1,
                                   e=', '.join(map(str, entries))))
       chance = -1
-    if chance is None and f0 > 0 and f1 > 0 and amount < 0:
+    if chance is None and f[0] > 0 and amount < 0 and \
+       len(variations['short']) > 0 and variations['short'][-1] < 1.0:
       self.logger.warning('Decision is +1(long), positions oppose trend, ' +
                           'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
                           .format(f=f, f0=f0, f1=f1,
