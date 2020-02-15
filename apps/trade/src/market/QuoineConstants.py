@@ -16,7 +16,7 @@ TIME_ERROR_ALLOW = 3
 # API呼び出しリトライ数
 RETRY_API_CALL = 10
 
-API_URI = 'https://api.quoine.com'
+API_URI = 'https://api.liquid.com'
 API_USER_AGENT = 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/42.0.2311.135 Safari/537.36 Edge/12.10240'
 
 # Path Info
