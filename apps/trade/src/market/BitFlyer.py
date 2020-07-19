@@ -402,18 +402,22 @@ class BitFlyer(object):
     return None
     
 
-  def get_executions(self, order_parent_id=None):
+  def get_executions(self, order_parent_id=None, count=100):
       """
       Get all executions.
 
       Refer:
       [約定の一覧を取得](https://lightning.bitflyer.jp/docs/#約定の一覧を取得)
       """
-      if order_parent_id is None:
-          path = "/v1/me/getexecutions?product_code=FX_BTC_JPY&count=20"
-      else:
-          path = "/v1/me/getexecutions?product_code=FX_BTC_JPY&count=20&child_order_acceptance_id={}".format(order_parent_id)
-
+      path = '/v1/me/getexecutions'
+      queries = [
+          'product_code=FX_BTC_JPY',
+          'count={count}'.format(count=count)
+      ]
+      if order_parent_id is not None:
+          queries.append('child_order_acceptance_id={parent_id}'
+                         .format(parent_id=order_parent_id))
+      path = '{p}?{q}'.format(p=path, q='&'.join(queries))
       listbf = self.call_json_api('GET', path)
       return listbf
 

@@ -95,6 +95,26 @@ class MainOperator(object):
                         'tmax={tmax}, tmin={tmin}.'.format(tmax=tmax, tmin=tmin))
     return result
 
+  def getPositionVariation(self):
+    tick = self.models.Ticks.one()
+    longs, shorts = self.getOpenPositions()
+    onePosition = None
+    varLongs = []
+    varShorts = []
+    if len(longs) > 0:
+      onePosition = longs[0].positions[0]
+    elif len(shorts) > 0:
+      onePosition = shorts[0].positions[0]
+    if onePosition is not None:
+      varLongs = [sum(tick.exchanger(o.exchanger).ask / o.priceMean()
+                      for o in p.positions) for p in longs]
+      varShorts = [sum(tick.exchanger(o.exchanger).bid / o.priceMean()
+                       for o in p.positions) for p in shorts]
+    return {
+      'long': varLongs,
+      'short': varShorts
+    }
+
   def getPositionSize(self):
     longs, shorts = self.getOpenPositions()
     amountLong = sum(sum(o.sizeWhole() for o in p.positions) for p in longs)
@@ -143,29 +163,60 @@ class MainOperator(object):
     self.logger.debug('Decision calculation finished, ' +
                       'f={f}, f(0)={f0}, f(1)={f1}.'
                       .format(f=f, f0=f0, f1=f1))
+    strength1 = 0.0
+    strength2 = 0.02
     chance = None
-    if f[0] > minGradient and f0 < 0 and f1 > 0:
-      self.logger.warning('Decision is +1(long), ' +
+    if f[0] > minGradient and \
+      ((f0 < strength1 < f1 and strength1 < v[0]) or \
+       (strength1 < f0 < strength2 and strength1 < v[0])):
+      self.logger.warning('Decision is +1(long, open), ' +
                           'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
                           .format(f=f, f0=f0, f1=f1,
                                   e=', '.join(map(str, entries))))
       chance = +1
-    if f[0] < -minGradient and f0 > 0 and f1 < 0:
-      self.logger.warning('Decision is -1(down), ' +
+    if f[0] < -minGradient and \
+      ((f0 > -strength1 > f1 and -strength1 > v[0]) or \
+       (-strength1 > f0 > -strength2 and -strength1 > v[0])):
+      self.logger.warning('Decision is -1(down, open), ' +
                           'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
                           .format(f=f, f0=f0, f1=f1,
                                   e=', '.join(map(str, entries))))
       chance = -1
     position = self.getPositionSize()
+    variations = self.getPositionVariation()
     amount = position['total']
-    if chance is None and f0 < 0 and f1 < 0 and amount > 0:
-      self.logger.warning('Decision is -1(short), positions oppose trend, ' +
+    self.logger.warning('Positions: amount={a}, variations={v}'.format(a=amount, v=variations))
+    if chance is None and f[0] < 0 and amount > 0 and \
+       len(variations['long']) > 0 and variations['long'][-1] > 1.0:
+      self.logger.warning('Decision is -1(short, profit), positions oppose trend, ' +
                           'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
                           .format(f=f, f0=f0, f1=f1,
                                   e=', '.join(map(str, entries))))
       chance = -1
-    if chance is None and f0 > 0 and f1 > 0 and amount < 0:
-      self.logger.warning('Decision is +1(long), positions oppose trend, ' +
+    if chance is None and f[0] > 0 and amount < 0 and \
+       len(variations['short']) > 0 and variations['short'][-1] < 1.0:
+      self.logger.warning('Decision is +1(long, profit), positions oppose trend, ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = +1
+    minGradientLossCut = 0.
+       #f0 < 0 and 
+    if chance is not None and \
+       f[0] < -minGradientLossCut and \
+       f1 < 0 and \
+       len(variations['long']) > 0 and variations['long'][-1] < 1.0:
+      self.logger.warning('Decision is -1(short, losscut), positions oppose trend, ' +
+                          'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
+                          .format(f=f, f0=f0, f1=f1,
+                                  e=', '.join(map(str, entries))))
+      chance = -1
+       #f0 > 0 and 
+    if chance is not None and \
+       f[0] > minGradientLossCut and \
+       f1 > 0 and \
+       len(variations['short']) > 0 and variations['short'][-1] > 1.0:
+      self.logger.warning('Decision is +1(long, losscut), positions oppose trend, ' +
                           'f={f}, f(0)={f0:.5f}, f(1)={f1:.5f}, entries=[{e}].'
                           .format(f=f, f0=f0, f1=f1,
                                   e=', '.join(map(str, entries))))
