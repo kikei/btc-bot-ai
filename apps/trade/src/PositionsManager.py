@@ -47,7 +47,7 @@ class PositionsManager(object):
     tick = self.models.Ticks.one()
     for p in positions:
       onePosition = p.positions[0]
-      oneTick = tick.exchanger(onePosition.exchanger)
+      oneTick = tick[onePosition.exchanger]
       var = PositionsManager.calcVariation(oneTick, onePosition)
       if onePosition.side == OnePosition.SideLong:
         if var >= self.profitThres:
