@@ -176,7 +176,7 @@ class Values(object):
     OperatorTrendWidth: 'int',
     OperatorTrendGradient: 'float',
     OperatorTrendSize: 'int',
-    OperatorPositionsMax: 'int',
+    OperatorPositionsMax: 'float',
     OperatorLotInit: 'float',
     PositionThresProfit: 'float',
     PositionThresLossCut: 'float'
